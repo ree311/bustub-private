@@ -63,6 +63,8 @@ class ExtendibleHashTable : public HashTable<K, V> {
    */
   auto GetNumBuckets() const -> int;
 
+  auto IncreseGlobalDepth() -> void;
+
   /**
    *
    * TODO(P1): Add implementation
@@ -123,6 +125,8 @@ class ExtendibleHashTable : public HashTable<K, V> {
 
     inline auto GetItems() -> std::list<std::pair<K, V>> & { return list_; }
 
+    inline auto GetSize() const -> size_t { return size_; }
+
     /**
      *
      * TODO(P1): Add implementation
@@ -157,6 +161,8 @@ class ExtendibleHashTable : public HashTable<K, V> {
      */
     auto Insert(const K &key, const V &value) -> bool;
 
+    auto Resize() -> bool;
+
    private:
     // TODO(student): You may add additional private members and helper functions
     size_t size_;
@@ -172,6 +178,7 @@ class ExtendibleHashTable : public HashTable<K, V> {
   size_t bucket_size_;  // The size of a bucket
   int num_buckets_;     // The number of buckets in the hash table
   mutable std::mutex latch_;
+  mutable std::mutex latch2_;
   std::vector<std::shared_ptr<Bucket>> dir_;  // The directory of the hash table
 
   // The following functions are completely optional, you can delete them if you have your own ideas.
@@ -196,6 +203,7 @@ class ExtendibleHashTable : public HashTable<K, V> {
   auto GetGlobalDepthInternal() const -> int;
   auto GetLocalDepthInternal(int dir_index) const -> int;
   auto GetNumBucketsInternal() const -> int;
+  auto IncreseGlobalDepthInternal() -> void;
 };
 
 }  // namespace bustub
