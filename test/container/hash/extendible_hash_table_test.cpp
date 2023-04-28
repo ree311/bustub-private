@@ -10,7 +10,23 @@
 
 namespace bustub {
 
-TEST(ExtendibleHashTableTest, DISABLED_SampleTest) {
+TEST(ExtendibleHashTableTest, SampleTest) {
+  auto my_table = std::make_unique<ExtendibleHashTable<int, std::string>>(2);
+  my_table->Insert(0, "q");
+  my_table->Insert(2, "a");
+  my_table->Insert(4, "k");
+  my_table->Insert(8, "b");
+  EXPECT_EQ(4, my_table->GetNumBuckets());
+  EXPECT_EQ(3, my_table->GetLocalDepth(0));
+
+  // my_table->Insert(6, "c");
+  // my_table->Insert(8, "d");
+  // my_table->Insert(5, "e");
+  // my_table->Insert(6, "f");
+  // my_table->Insert(7, "g");
+  // my_table->Insert(8, "h");
+  // my_table->Insert(9, "i");
+
   auto table = std::make_unique<ExtendibleHashTable<int, std::string>>(2);
 
   table->Insert(1, "a");
@@ -42,7 +58,7 @@ TEST(ExtendibleHashTableTest, DISABLED_SampleTest) {
   EXPECT_FALSE(table->Remove(20));
 }
 
-TEST(ExtendibleHashTableTest, DISABLED_ConcurrentInsertTest) {
+TEST(ExtendibleHashTableTest, ConcurrentInsertTest) {
   const int num_runs = 50;
   const int num_threads = 3;
 
