@@ -171,7 +171,7 @@ void ExtendibleHashTable<K, V>::Insert(const K &key, const V &value) {
     if (GetGlobalDepth() == GetLocalDepth(dir_index)) {
       LOG_DEBUG("# [KV Insert]Global depth is equal to local depth, now do as 1.");
       IncreseGlobalDepth();
-      LOG_DEBUG("# [KV Insert]Global depth increased, now is %zu", dir_.size());
+      LOG_DEBUG("# [KV Insert]Global depth increased, now is %d", GetGlobalDepth());
       size_t pre_global_size = dir_.size();
       dir_.resize(2 * pre_global_size);
 
@@ -189,6 +189,10 @@ void ExtendibleHashTable<K, V>::Insert(const K &key, const V &value) {
       LOG_DEBUG("# [KV Insert]Now the dir_ size is %zu, dir_index is %zu", dir_.size(), dir_index);
     }
 
+    // actually we should do increment before redistrubute.
+    LOG_DEBUG("# [KV Insert]Now Increase the local depth of index %lu", dir_index);
+    dir_[dir_index]->IncrementDepth();
+    
     std::shared_ptr<Bucket> buck_new(new Bucket(bucket_size_, GetLocalDepth(dir_index)));
     // latch_.lock();
     auto it = dir_[dir_index]->GetItems().begin();
@@ -214,10 +218,7 @@ void ExtendibleHashTable<K, V>::Insert(const K &key, const V &value) {
     }
     dir_[dir_index] = buck_new;
 
-    // actually we should do increment after redistrubute.
-    LOG_DEBUG("# [KV Insert]Now Increase the local depth of index %lu", dir_index);
-    dir_[dir_index]->IncrementDepth();
-
+    LOG_DEBUG("# [KV Insert]Num_bucket added, now is %d", num_buckets_ + 1);
     num_buckets_++;
     // latch_.unlock();
     // LOG_DEBUG("# [KV Insert]Now redistribute the kv pairs in the bucket");
