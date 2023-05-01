@@ -189,11 +189,8 @@ void ExtendibleHashTable<K, V>::Insert(const K &key, const V &value) {
       LOG_DEBUG("# [KV Insert]Now the dir_ size is %zu, dir_index is %zu", dir_.size(), dir_index);
     }
 
-    // actually we should do increment before redistrubute.
-    LOG_DEBUG("# [KV Insert]Now Increase the local depth of index %lu", dir_index);
-    dir_[dir_index]->IncrementDepth();
-    
-    std::shared_ptr<Bucket> buck_new(new Bucket(bucket_size_, GetLocalDepth(dir_index)));
+    std::shared_ptr<Bucket> buck_new0(new Bucket(bucket_size_, GetLocalDepth(dir_index) + 1));
+    std::shared_ptr<Bucket> buck_new1(new Bucket(bucket_size_, GetLocalDepth(dir_index) + 1));
     // latch_.lock();
     auto it = dir_[dir_index]->GetItems().begin();
     LOG_DEBUG("# [KV Insert]Now redistribute the kv pairs for the bucket %lu", dir_index);
@@ -209,14 +206,27 @@ void ExtendibleHashTable<K, V>::Insert(const K &key, const V &value) {
     //   buck_new->GetItems().splice(buck_new->GetItems().end(), dir_[dir_index]->GetItems(),
     //                               dir_[dir_index]->GetItems().begin());
     // }
+    int mask = 1 << GetLocalDepth(dir_index);
+
     while (it != dir_[dir_index]->GetItems().end()) {
-      if (IndexOf(it->first) == dir_index) {
-        LOG_DEBUG("# [KV Insert] Got one");
-        buck_new->GetItems().emplace_back(it->first, it->second);
+      if (IndexOf(it->first) & mask) {
+        LOG_DEBUG("# [KV Insert] Got one for the new");
+        buck_new1->GetItems().emplace_back(it->first, it->second);
+      } else {
+        buck_new0->GetItems().emplace_back(it->first, it->second);
       }
       it++;
     }
-    dir_[dir_index] = buck_new;
+
+    for (size_t i = dir_index & (mask - 1); i < dir_.size(); i += mask) {
+      // 根据本地深度表示的有效位最后一位判别，若为 1，取代新建的那个bucket
+      if ((i & mask) != 0) {
+        dir_[i] = buck_new1;
+      } else {
+        // 根据本地深度表示的有效位最后一位判别，若为 0，取代原有的 bucket
+        dir_[i] = buck_new0;
+      }
+    }
 
     LOG_DEBUG("# [KV Insert]Num_bucket added, now is %d", num_buckets_ + 1);
     num_buckets_++;

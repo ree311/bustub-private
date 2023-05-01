@@ -12,6 +12,7 @@
 
 #include "buffer/lru_k_replacer.h"
 #include <algorithm>
+#include <mutex>
 #include "common/logger.h"
 
 namespace bustub {
@@ -19,6 +20,7 @@ namespace bustub {
 LRUKReplacer::LRUKReplacer(size_t num_frames, size_t k) : replacer_size_(num_frames), k_(k) {}
 
 auto LRUKReplacer::Evict(frame_id_t *frame_id) -> bool {
+  std::scoped_lock<std::mutex> lock(latch_);
   std::vector<frame_id_t> inf_frames;
   size_t evict_frame_time = __INT_MAX__;
   frame_id_t evict_frame_id = __INT_MAX__;
@@ -68,6 +70,7 @@ auto LRUKReplacer::Evict(frame_id_t *frame_id) -> bool {
 }
 
 void LRUKReplacer::RecordAccess(frame_id_t frame_id) {
+  std::scoped_lock<std::mutex> lock(latch_);
   current_timestamp_++;
 
   if (id_to_frames_.find(frame_id) == id_to_frames_.end()) {
@@ -108,6 +111,7 @@ void LRUKReplacer::SetEvictable(frame_id_t frame_id, bool set_evictable) {
 }
 
 void LRUKReplacer::Remove(frame_id_t frame_id) {
+  std::scoped_lock<std::mutex> lock(latch_);
   if (id_to_frames_.find(frame_id) == id_to_frames_.end()) {
     LOG_INFO("# [Remove]Can't find the frame %d", frame_id);
     return;
@@ -121,6 +125,7 @@ void LRUKReplacer::Remove(frame_id_t frame_id) {
 }
 
 auto LRUKReplacer::Size() -> size_t {
+  std::scoped_lock<std::mutex> lock(latch_);
   size_t count = 0;
   for (auto const &frame : id_to_frames_) {
     if (frame.second.evictable_) {
