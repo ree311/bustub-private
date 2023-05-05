@@ -26,6 +26,7 @@ BufferPoolManagerInstance::BufferPoolManagerInstance(size_t pool_size, DiskManag
   page_table_ = new ExtendibleHashTable<page_id_t, frame_id_t>(bucket_size_);
   replacer_ = new LRUKReplacer(pool_size, replacer_k);
   next_page_id_ = 0;
+  LOG_DEBUG("# [BPMI] pool_size is %zu", pool_size);
 
   // Initially, every page is in the free list.
   for (size_t i = 0; i < pool_size_; ++i) {
@@ -56,6 +57,7 @@ BufferPoolManagerInstance::~BufferPoolManagerInstance() {
  * @return nullptr if no new pages could be created, otherwise pointer to new page
  */
 auto BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) -> Page * {
+  std::scoped_lock<std::mutex> lock(latch_);
   LOG_INFO("# [NewPgImp] Now creating new page");
   frame_id_t free_frame;
   if (!free_list_.empty()) {
@@ -68,15 +70,16 @@ auto BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) -> Page * {
 
     if (pages_[free_frame].IsDirty()) {
       disk_manager_->WritePage(pages_[free_frame].GetPageId(), pages_[free_frame].GetData());
+      pages_[free_frame].is_dirty_ = false;
     }
   } else {
     LOG_INFO("# [NewPgImp] Free list is full and can't evict, create new page failed");
     return nullptr;
   }
-  latch_.lock();
+
   *page_id = AllocatePage();
   LOG_INFO("# [NewPgImp] Now got new page %d", *page_id);
-  latch_.unlock();
+
   page_table_->Insert(*page_id, free_frame);
   pages_[free_frame].ResetMemory();
   pages_[free_frame].page_id_ = *page_id;
@@ -104,6 +107,7 @@ auto BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) -> Page * {
  * @return nullptr if page_id cannot be fetched, otherwise pointer to the requested page
  */
 auto BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) -> Page * {
+  std::scoped_lock<std::mutex> lock(latch_);
   LOG_INFO("# [FetchPgImp] Now try to fetch page %d ", page_id);
   frame_id_t fetch_frame;
   if (page_table_->Find(page_id, fetch_frame)) {
@@ -124,17 +128,15 @@ auto BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) -> Page * {
     LOG_INFO("# [FetchPgImp] Got frame by evict.");
     page_table_->Remove(pages_[fetch_frame].GetPageId());
     if (pages_[fetch_frame].IsDirty()) {
-      latch_.lock();
       disk_manager_->WritePage(pages_[fetch_frame].GetPageId(), pages_[fetch_frame].GetData());
-      latch_.unlock();
+      pages_[fetch_frame].is_dirty_ = false;
     }
   } else {
     return nullptr;
   }
 
-  latch_.lock();
   disk_manager_->ReadPage(page_id, pages_[fetch_frame].data_);
-  latch_.unlock();
+
   page_table_->Insert(page_id, fetch_frame);
   pages_[fetch_frame].page_id_ = page_id;
   pages_[fetch_frame].pin_count_ = 1;
@@ -158,6 +160,7 @@ auto BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) -> Page * {
  * @return false if the page is not in the page table or its pin count is <= 0 before this call, true otherwise
  */
 auto BufferPoolManagerInstance::UnpinPgImp(page_id_t page_id, bool is_dirty) -> bool {
+  std::scoped_lock<std::mutex> lock(latch_);
   LOG_INFO("# [UnpinPgImp] Now check page_id %d to %d", page_id, is_dirty);
 
   frame_id_t unpin_frame;
@@ -197,6 +200,7 @@ auto BufferPoolManagerInstance::UnpinPgImp(page_id_t page_id, bool is_dirty) -> 
  * @return false if the page could not be found in the page table, true otherwise
  */
 auto BufferPoolManagerInstance::FlushPgImp(page_id_t page_id) -> bool {
+  std::scoped_lock<std::mutex> lock(latch_);
   if (page_id == INVALID_PAGE_ID) {
     throw "Page Can't be INVALID_PAGE_ID";
   }
@@ -205,9 +209,7 @@ auto BufferPoolManagerInstance::FlushPgImp(page_id_t page_id) -> bool {
     // LOG_INFO("# [FlushPgImp] Now check page_id %d ", pages_[i].GetPageId());
 
     pages_[flush_frame].is_dirty_ = false;
-    latch_.lock();
     disk_manager_->WritePage(page_id, pages_[flush_frame].GetData());
-    latch_.unlock();
     LOG_INFO("# [FlushPgImp] Page %d flushed", page_id);
     return true;
   }
@@ -216,13 +218,13 @@ auto BufferPoolManagerInstance::FlushPgImp(page_id_t page_id) -> bool {
 }
 
 void BufferPoolManagerInstance::FlushAllPgsImp() {
+  std::scoped_lock<std::mutex> lock(latch_);
   LOG_INFO("# [FlushAllPgsImp] Now flush all the pages.");
   for (size_t i = 0; i < pool_size_; i++) {
     if (pages_[i].GetPageId() != INVALID_PAGE_ID) {
       pages_[i].is_dirty_ = false;
-      latch_.lock();
+
       disk_manager_->WritePage(pages_[i].GetPageId(), pages_[i].GetData());
-      latch_.unlock();
     }
   }
 }
@@ -241,6 +243,7 @@ void BufferPoolManagerInstance::FlushAllPgsImp() {
  * @return false if the page exists but could not be deleted, true if the page didn't exist or deletion succeeded
  */
 auto BufferPoolManagerInstance::DeletePgImp(page_id_t page_id) -> bool {
+  std::scoped_lock<std::mutex> lock(latch_);
   if (page_id == INVALID_PAGE_ID) {
     throw "Page Can't be INVALID_PAGE_ID";
   }
@@ -258,9 +261,9 @@ auto BufferPoolManagerInstance::DeletePgImp(page_id_t page_id) -> bool {
     page_table_->Remove(page_id);
     replacer_->Remove(delete_frame);
     free_list_.emplace_back(delete_frame);
-    latch_.lock();
+
     DeallocatePage(page_id);
-    latch_.unlock();
+
     LOG_INFO("# [DeletePgImp] Page deleted.");
     return true;
   }

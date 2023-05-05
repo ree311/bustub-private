@@ -114,7 +114,7 @@ auto ExtendibleHashTable<K, V>::Remove(const K &key) -> bool {
   while (it != dir_[dir_index]->GetItems().end()) {
     if (it->first == key) {
       it = dir_[dir_index]->GetItems().erase(it);
-      LOG_INFO("# [KV Remove]Found key, now remove it");
+      // LOG_INFO("# [KV Remove]Found key, now remove it");
       return true;
     }
     it++;
@@ -126,7 +126,7 @@ auto ExtendibleHashTable<K, V>::Remove(const K &key) -> bool {
   //     return true;
   //   }
   // }
-  LOG_INFO("# [KV Remove]Can't find key");
+  // LOG_INFO("# [KV Remove]Can't find key");
   return false;
 }
 
@@ -150,32 +150,32 @@ template <typename K, typename V>
 void ExtendibleHashTable<K, V>::Insert(const K &key, const V &value) {
   std::scoped_lock<std::mutex> lock(latch2_);
   auto dir_index = IndexOf(key);
-  LOG_DEBUG("# [KV Insert] dir_index is %lu", dir_index);
+  // LOG_DEBUG("# [KV Insert] dir_index is %lu", dir_index);
 
   auto it = dir_[dir_index]->GetItems().begin();
   while (it != dir_[dir_index]->GetItems().end()) {
     if (it->first == key) {
-      LOG_DEBUG("# [KV Insert]Found key, now to replace its value");
+      // LOG_DEBUG("# [KV Insert]Found key, now to replace its value");
       it->second = value;
       return;
     }
     it++;
   }
 
-  LOG_DEBUG("# [KV Insert]Can't find key, try to insert");
+  // LOG_DEBUG("# [KV Insert]Can't find key, try to insert");
 
   while (dir_[dir_index]->IsFull()) {
-    LOG_DEBUG("# [KV Insert]Bucket is full");
-    LOG_DEBUG("# [KV Insert]Global depth is %d, Local depth is %d, global size is %lu, total buckets = %d",
-              GetGlobalDepth(), GetLocalDepth(dir_index), dir_.size(), num_buckets_);
+    // LOG_DEBUG("# [KV Insert]Bucket is full");
+    // LOG_DEBUG("# [KV Insert]Global depth is %d, Local depth is %d, global size is %lu, total buckets = %d",
+    // GetGlobalDepth(), GetLocalDepth(dir_index), dir_.size(), num_buckets_);
     if (GetGlobalDepth() == GetLocalDepth(dir_index)) {
-      LOG_DEBUG("# [KV Insert]Global depth is equal to local depth, now do as 1.");
+      // LOG_DEBUG("# [KV Insert]Global depth is equal to local depth, now do as 1.");
       IncreseGlobalDepth();
-      LOG_DEBUG("# [KV Insert]Global depth increased, now is %d", GetGlobalDepth());
+      // LOG_DEBUG("# [KV Insert]Global depth increased, now is %d", GetGlobalDepth());
       size_t pre_global_size = dir_.size();
       dir_.resize(2 * pre_global_size);
 
-      LOG_DEBUG("# [KV Insert]Now resize the dir_");
+      // LOG_DEBUG("# [KV Insert]Now resize the dir_");
 
       // latch_.lock();
       size_t i = pre_global_size;
@@ -186,14 +186,14 @@ void ExtendibleHashTable<K, V>::Insert(const K &key, const V &value) {
       // latch_.unlock();
 
       dir_index = IndexOf(key);
-      LOG_DEBUG("# [KV Insert]Now the dir_ size is %zu, dir_index is %zu", dir_.size(), dir_index);
+      // LOG_DEBUG("# [KV Insert]Now the dir_ size is %zu, dir_index is %zu", dir_.size(), dir_index);
     }
 
     std::shared_ptr<Bucket> buck_new0(new Bucket(bucket_size_, GetLocalDepth(dir_index) + 1));
     std::shared_ptr<Bucket> buck_new1(new Bucket(bucket_size_, GetLocalDepth(dir_index) + 1));
     // latch_.lock();
     auto it = dir_[dir_index]->GetItems().begin();
-    LOG_DEBUG("# [KV Insert]Now redistribute the kv pairs for the bucket %lu", dir_index);
+    // LOG_DEBUG("# [KV Insert]Now redistribute the kv pairs for the bucket %lu", dir_index);
     // while (std::next(it) != dir_[dir_index]->GetItems().end()) {
     //   if (IndexOf(std::next(it)->first) == dir_index) {
     //     LOG_DEBUG("# [KV Insert]Move1");
@@ -210,7 +210,7 @@ void ExtendibleHashTable<K, V>::Insert(const K &key, const V &value) {
 
     while (it != dir_[dir_index]->GetItems().end()) {
       if (IndexOf(it->first) & mask) {
-        LOG_DEBUG("# [KV Insert] Got one for the new");
+        // LOG_DEBUG("# [KV Insert] Got one for the new");
         buck_new1->GetItems().emplace_back(it->first, it->second);
       } else {
         buck_new0->GetItems().emplace_back(it->first, it->second);
@@ -228,7 +228,7 @@ void ExtendibleHashTable<K, V>::Insert(const K &key, const V &value) {
       }
     }
 
-    LOG_DEBUG("# [KV Insert]Num_bucket added, now is %d", num_buckets_ + 1);
+    // LOG_DEBUG("# [KV Insert]Num_bucket added, now is %d", num_buckets_ + 1);
     num_buckets_++;
     // latch_.unlock();
     // LOG_DEBUG("# [KV Insert]Now redistribute the kv pairs in the bucket");
@@ -237,7 +237,7 @@ void ExtendibleHashTable<K, V>::Insert(const K &key, const V &value) {
     //   LOG_DEBUG("# [KV Insert]Inserted one kv to index %lu", IndexOf(p.first));
     // }
   }
-  LOG_DEBUG("# [KV Insert]Now insert the new key & value to index %lu", dir_index);
+  // LOG_DEBUG("# [KV Insert]Now insert the new key & value to index %lu", dir_index);
   // latch_.lock();
   dir_[dir_index]->GetItems().emplace_back(key, value);
   // latch_.unlock();
