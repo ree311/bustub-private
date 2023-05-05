@@ -12,7 +12,6 @@
 
 #include "buffer/lru_k_replacer.h"
 #include <algorithm>
-#include <mutex>
 #include "common/logger.h"
 
 namespace bustub {
@@ -102,11 +101,12 @@ void LRUKReplacer::RecordAccess(frame_id_t frame_id) {
 }
 
 void LRUKReplacer::SetEvictable(frame_id_t frame_id, bool set_evictable) {
+  std::scoped_lock<std::mutex> lock(latch_);
   if (id_to_frames_.find(frame_id) == id_to_frames_.end()) {
     LOG_INFO("# [SetEvictable]No frame %d", frame_id);
     return;
   }
-  LOG_INFO("# [SetEvictable]Set frame %d as excepted", frame_id);
+  LOG_INFO("# [SetEvictable]Set frame %d as %d", frame_id, set_evictable);
   id_to_frames_[frame_id].evictable_ = set_evictable;
 }
 
