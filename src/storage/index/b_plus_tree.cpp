@@ -21,7 +21,23 @@ BPLUSTREE_TYPE::BPlusTree(std::string name, BufferPoolManager *buffer_pool_manag
  * Helper function to decide whether current b+tree is empty
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::IsEmpty() const -> bool { return true; }
+auto BPLUSTREE_TYPE::IsEmpty() const -> bool { 
+  if(root_page_id_ == INVALID_PAGE_ID){
+    return true;
+  }
+  return false;
+}
+
+/*
+ * Helper function to find the leafnode int the current b+tree
+ */
+INDEX_TEMPLATE_ARGUMENTS
+auto BPLUSTREE_TYPE::FindLeaf(BPlusTreePage *bpt_page) const -> void { 
+  if(bpt_page->IsLeafPage()){
+    
+  }
+}
+
 /*****************************************************************************
  * SEARCH
  *****************************************************************************/
@@ -32,6 +48,29 @@ auto BPLUSTREE_TYPE::IsEmpty() const -> bool { return true; }
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result, Transaction *transaction) -> bool {
+  page_id_t current_page_id = root_page_id_;
+  Page *page = buffer_pool_manager_->FetchPage(current_page_id);
+  BPlusTreePage *bpt_page = reinterpret_cast<BPlusTreePage>(page);
+
+  while(!bpt_page->IsLeafPage()){
+    auto internal_page = reinterpret_cast<BPlusTreeInternalPage>(bpt_page);
+    KeyType new_key;
+    Page *node_page;
+    int index = internal_page->FindSmallestKeyValue(key, &new_key);
+    if(index = -1){
+      node_page = buffer_pool_manager_->FetchPage(internal_page->EndValue());
+    }else if(new_key == key){
+      node_page = buffer_pool_manager_->FetchPage(internal_page->ValueAt(index+1));
+    }else{
+      node_page = buffer_pool_manager_->FetchPage(internal_page->ValueAt(index));
+    }
+    bpt_page = reinterpret_cast<BPlusTreePage>(node_page);
+  }
+  
+  auto leaf_page = reinterpret_cast<BPlusTreeLeafPage>(bpt_page);
+  if(leaf_page->FindKey(key, result)){
+    return true;
+  }
   return false;
 }
 
@@ -47,7 +86,9 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transaction *transaction) -> bool {
-  return false;
+  if(IsEmpty()){
+
+  }
 }
 
 /*****************************************************************************
@@ -94,7 +135,7 @@ auto BPLUSTREE_TYPE::End() -> INDEXITERATOR_TYPE { return INDEXITERATOR_TYPE(); 
  * @return Page id of the root of this tree
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::GetRootPageId() -> page_id_t { return 0; }
+auto BPLUSTREE_TYPE::GetRootPageId() -> page_id_t { return root_page_id_; }
 
 /*****************************************************************************
  * UTILITIES AND DEBUG

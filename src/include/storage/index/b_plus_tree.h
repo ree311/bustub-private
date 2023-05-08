@@ -57,6 +57,9 @@ class BPlusTree {
   // return the page id of the root node
   auto GetRootPageId() -> page_id_t;
 
+  // find leaf node in the b+tree
+  auto FindLeaf(BPlusTreePage *bpt_page) const -> void;
+
   // index iterator
   auto Begin() -> INDEXITERATOR_TYPE;
   auto Begin(const KeyType &key) -> INDEXITERATOR_TYPE;
