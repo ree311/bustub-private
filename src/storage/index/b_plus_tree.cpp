@@ -53,6 +53,7 @@ auto BPLUSTREE_TYPE::FindLeaf(BPlusTreePage *bpt_page, const KeyType &key) const
   }else{
     node_page = buffer_pool_manager_->FetchPage(internal_page->ValueAt(index));
   }
+  buffer_pool_manager_->UnpinPage(internal_page, false);
   bpt_page = reinterpret_cast<BPlusTreePage *>(node_page);
   FindLeaf(bpt_page);
 }
@@ -72,9 +73,13 @@ auto BPLUSTREE_TYPE::InsertInParent(const page_id_t &old_page_id, const KeyType 
     new_root_page->SetKeyAt(1, key);
     new_root_page->SetValueAt(1, new_internal_page);
     UpdateRootPageId(1);
+    buffer_pool_manager_->UnpinPage(old_page_id, true);
+    buffer_pool_manager_->UnpinPage(new_page_id, true);
+    buffer_pool_manager_->UnpinPage(new_root_page_id, true);
     return ;
   }
   page_id_t parent_page_id = internal_page->GetParentPageId();
+  buffer_pool_manager_->UnpinPage(old_page_id, true);
   Page *parent_page = buffer_pool_manager_->FetchPage(parent_page_id);
   auto parent_bpt_page = reinterpret_cast<BPlusTreeInternalPage *>(parent_page);
   if (parent_bpt_page->GetPointerNums() < GetSize()){
@@ -102,6 +107,7 @@ auto BPLUSTREE_TYPE::InsertInParent(const page_id_t &old_page_id, const KeyType 
     while (i < n) {
       new_parent_bpt_page->KVInsert(internal_copy_page->KeyAt(i), internal_copy_page->ValueAt(i));
     }
+    buffer_pool_manager_->DeletePage(copy_page_id);
     InsertInParent(parent_bpt_page, new_key, new_parent_bpt_page);
   }
 }
@@ -128,6 +134,7 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
 
   auto leaf_page = reinterpret_cast<BPlusTreeLeafPage *>(bpt_page);
   if(leaf_page->FindKey(key, result)){
+    buffer_pool_manager_->UnpinPage(leaf_page, false);
     return true;
   }
   return false;
@@ -166,7 +173,7 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
   }else {
     page_id_t new_parent_page_id;
     Page *new_parent_page = buffer_pool_manager_->NewPage(new_parent_page_id);
-    auto new_parent_page = reinterpret_cast<BPlusTreeInternalPage *>(new_parent_page);
+    auto new_parent_bpt_page = reinterpret_cast<BPlusTreeInternalPage *>(new_parent_page);
     page_id_t new_page_id;
     Page *new_page = buffer_pool_manager_->NewPage(new_page_id);
     auto leaf_page = reinterpret_cast<BPlusTreeLeafPage *>(new_page);
@@ -176,8 +183,8 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
     // InsertInLeaf(leaf_page, key, value);
     leaf_page->LeafInsert(key, value);
     int temp_n = GetSize();
-    new_parent_page->SetValueAt(temp_n-1, bpt_page->GetPageId());
-    bpt_page->SetValueAt(temp_n-1, new_parent_page->GetPageId());
+    new_parent_bpt_page->SetValueAt(temp_n-1, bpt_page->GetPageId());
+    bpt_page->SetValueAt(temp_n-1, new_parent_bpt_page->GetPageId());
     bpt_page->EraseAll();
 
     int i = 0;
@@ -185,9 +192,10 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
       bpt_page->KVInsert(leaf_page->KeyAt(i), leaf_page->ValueAt(i));
     }
     for( ; i<temp_n; i++){
-      new_parent_page->KVInsert(leaf_page->KeyAt(i), leaf_page->ValueAt(i));
+      new_parent_bpt_page->KVInsert(leaf_page->KeyAt(i), leaf_page->ValueAt(i));
     }
-    InsertInParent(bpt_page, new_parent_page->KeyAt(0), new_parent_page->ValueAt(0), new_parent_page);
+    buffer_pool_manager_->DeletePage(new_page_id);
+    InsertInParent(bpt_page, new_parent_page->KeyAt(0), new_parent_bpt_page);
   }
 }
 
