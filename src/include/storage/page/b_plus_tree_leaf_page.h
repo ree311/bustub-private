@@ -49,7 +49,14 @@ class BPlusTreeLeafPage : public BPlusTreePage {
   auto GetNextPageId() const -> page_id_t;
   void SetNextPageId(page_id_t next_page_id);
   auto KeyAt(int index) const -> KeyType;
+  auto ValueAt(int index) const -> ValueType;
+  auto SetValueAt(int index, const ValueType &value) -> void;
+  auto EraseAll() -> void;
+  auto LeafInsert(const KeyType &key, const ValueType &value) -> void;
   auto FindKey(const KeyType &key, ValueType *value) const -> bool;
+  auto KVInsert(const KeyType &key, const ValueType &value) -> bool;
+  auto GetKVNums() const -> size_t;
+  auto GetArray() const -> MappingType;
 
  private:
   page_id_t next_page_id_;

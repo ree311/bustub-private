@@ -41,8 +41,13 @@ class BPlusTreeInternalPage : public BPlusTreePage {
   auto KeyAt(int index) const -> KeyType;
   void SetKeyAt(int index, const KeyType &key);
   auto ValueAt(int index) const -> ValueType;
-  auto FindSmallestKeyValue(const KeyType &key, KeyType *new_key) -> int;
+  auto SetValueAt(int index, const ValueType &value) -> void;
+  auto InternalInsert(const KeyType &key, const ValueType &value) -> void;
+  auto KVInsert(int index, const KeyType &key, const ValueType &value) -> bool;
+  auto FindSmallestBiggerKV(const KeyType &key) const -> int;
   auto GetEndValue() const -> ValueType;
+  auto GetPointerNums() const -> int;
+  auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::EraseAll() -> void;
 
  private:
   // Flexible array member for page data.

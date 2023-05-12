@@ -55,6 +55,46 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::KeyAt(int index) const -> KeyType {
 }
 
 INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::ValueAt(int index) const -> ValueType {
+  return array_[index].second;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::SetValueAt(int index, const ValueType &value) -> void{
+  array_[index].second = value;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::GetKVNums() const -> size_t { return std::tuple_size<std::pair>(array_); }
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::KVInsert(const KeyType &key, const ValueType &value) -> bool {
+  int n = array_.size();
+  array_[n].first = key;
+  array_[n].second = value;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::LeafInsert(const KeyType &key, const ValueType &value) -> void{
+  int low = 0, high = array_.size()-1, mid = 0;
+  
+  while(low <= high){
+    mid = low + (high - low)/2;
+    if(array_[mid].first < key){
+      low = mid+1;
+    }else{
+      high = mid-1;
+    }
+  }
+  array_[low].first = key;
+  array_[low].second = value;
+}
+
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::GetArray() const -> MappingType{ return array_; }
+
+INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::FindKey(const KeyType &key, ValueType *value) const -> bool {
   int low = 0, high = array_.size(), temp = 0;
   while(low < high){
@@ -69,6 +109,14 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::FindKey(const KeyType &key, ValueType *value) c
     }
   }
   return false;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::EraseAll() -> void{ 
+  auto it = array_.begin();
+  while (it != array_.end()) {
+    it = array_.erase(it);
+  }
 }
 
 template class BPlusTreeLeafPage<GenericKey<4>, RID, GenericComparator<4>>;

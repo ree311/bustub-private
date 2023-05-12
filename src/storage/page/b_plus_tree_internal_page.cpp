@@ -46,6 +46,41 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetKeyAt(int index, const KeyType &key) {
   array_[index].first = key;
 }
 
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::GetPointerNums() const -> int{
+  return array_.size();
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::EraseAll() -> void{ 
+  auto it = array_.begin();
+  while (it != array_.end()) {
+    it = array_.erase(it);
+  }
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::KVInsert(int index, const KeyType &key, const ValueType &value) -> bool {
+  array_[index].first = key;
+  array_[index].second = value;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::InternalInsert(const KeyType &key, const ValueType &value) -> void{
+  int low = 0, high = array_.size()-1, mid = 0;
+  
+  while(low <= high){
+    mid = low + (high - low)/2;
+    if(array_[mid].first < key){
+      low = mid+1;
+    }else{
+      high = mid-1;
+    }
+  }
+  array_[low].first = key;
+  array_[low].second = value;
+}
+
 /*
  * Helper method to get the value associated with input "index"(a.k.a array
  * offset)
@@ -54,11 +89,15 @@ INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueAt(int index) const -> ValueType { return array_[index].second; }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindSmallestKeyValue(const KeyType &key, KeyType *new_key) -> int{
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetValueAt(int index, const ValueType &value) -> void{
+  array_[index].second = value;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindSmallestBiggerKV(const KeyType &key) const -> int{
   int low = 0, high = array_.size();
   while(low < high){
     if(KeyAt(low) >= key){
-      *new_key = KeyAt(low);
       return low;
     }
     low++;

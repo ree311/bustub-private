@@ -44,7 +44,7 @@ void BPlusTreePage::SetSize(int size) {
     size_ = size;
 }
 void BPlusTreePage::IncreaseSize(int amount) {
-    size_ += amount;
+    max_size_ +=amount;
 }
 
 /*
