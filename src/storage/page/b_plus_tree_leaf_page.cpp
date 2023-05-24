@@ -72,11 +72,12 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::KVInsert(const KeyType &key, const ValueType &v
   int n = array_.size();
   array_[n].first = key;
   array_[n].second = value;
+  size++;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::LeafInsert(const KeyType &key, const ValueType &value) -> void{
-  int low = 0, high = array_.size()-1, mid = 0;
+  int low = 1, high = size_, mid = 0, i = size_+1;
   
   while(low <= high){
     mid = low + (high - low)/2;
@@ -86,8 +87,14 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::LeafInsert(const KeyType &key, const ValueType 
       high = mid-1;
     }
   }
+
+  for(; i>low; i--){
+    array_[i] = array_[i-1];
+  }
+
   array_[low].first = key;
   array_[low].second = value;
+  size_++;
 }
 
 
@@ -117,6 +124,7 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::EraseAll() -> void{
   while (it != array_.end()) {
     it = array_.erase(it);
   }
+  size_ = 0;
 }
 
 template class BPlusTreeLeafPage<GenericKey<4>, RID, GenericComparator<4>>;

@@ -48,7 +48,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetKeyAt(int index, const KeyType &key) {
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::GetPointerNums() const -> int{
-  return array_.size();
+  return size_;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
@@ -57,17 +57,45 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::EraseAll() -> void{
   while (it != array_.end()) {
     it = array_.erase(it);
   }
+  size_ = 0;
 }
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindBrotherPage(BPlusTreePage *page, KeyType *key, page_id_t *bro_page_id_left = -1, page_id_t *bro_page_id_right = -1) const -> void {
+  auto parent_page = reinterpret_cast<BPlusTreeInternalPage *>(page);
+  for(int i=0; i<parent_page->GetSize(); i++){
+    if(parent_page->ValueAt(i) == GetPageId()){
+      if(i == 0){
+        // if(parent_page->GetSize() == 1){
+        //   return false;
+        // }
+        *bro_page_id_right = parent_page->ValueAt(i+1);
+        *key = parent_page->KeyAt(i+1);
+        return ;
+      }else{
+        *bro_page_id_left = parent_page->ValueAt(i-1);
+        // *bro_page_id_right = parent_page->ValueAt(i+1);
+        key = parent_page->KeyAt(i);
+        return ;
+      }
+    }
+  }
+  return ;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::GetArray() const -> MappingType { return array_; }
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::KVInsert(int index, const KeyType &key, const ValueType &value) -> bool {
   array_[index].first = key;
   array_[index].second = value;
+  size_++;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::InternalInsert(const KeyType &key, const ValueType &value) -> void{
-  int low = 0, high = array_.size()-1, mid = 0;
+  int low = 1, high = size_, mid = 0, i = size_+1;
   
   while(low <= high){
     mid = low + (high - low)/2;
@@ -77,8 +105,14 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::InternalInsert(const KeyType &key, const Va
       high = mid-1;
     }
   }
+  
+  for(; i>low; i--){
+    array_[i] = array_[i-1];
+  }
+
   array_[low].first = key;
   array_[low].second = value;
+  size_++;
 }
 
 /*
@@ -111,6 +145,15 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::GetEndValue() const -> ValueType{
   return array_.back();
 }
 
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::DeleteEndValue() -> void{
+  auto it = array_.begin();
+  while(std::next(it)!=array_.end()){
+    it++;
+  }
+  array_.erase(it);
+  size_--;
+}
 
 // valuetype for internalNode should be page id_t
 template class BPlusTreeInternalPage<GenericKey<4>, page_id_t, GenericComparator<4>>;

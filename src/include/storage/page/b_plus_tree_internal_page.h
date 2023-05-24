@@ -19,6 +19,7 @@ namespace bustub {
 #define B_PLUS_TREE_INTERNAL_PAGE_TYPE BPlusTreeInternalPage<KeyType, ValueType, KeyComparator>
 #define INTERNAL_PAGE_HEADER_SIZE 24
 #define INTERNAL_PAGE_SIZE ((BUSTUB_PAGE_SIZE - INTERNAL_PAGE_HEADER_SIZE) / (sizeof(MappingType)))
+// enum class BrotherPageType{NO_BROTHER_PAGE = 0, RIGHT_BROTHER_PAGE, LEFT_BROTHER_PAGE, BOTH_BROTHER_PAGE};
 /**
  * Store n indexed keys and n+1 child pointers (page_id) within internal page.
  * Pointer PAGE_ID(i) points to a subtree in which all keys K satisfy:
@@ -46,8 +47,11 @@ class BPlusTreeInternalPage : public BPlusTreePage {
   auto KVInsert(int index, const KeyType &key, const ValueType &value) -> bool;
   auto FindSmallestBiggerKV(const KeyType &key) const -> int;
   auto GetEndValue() const -> ValueType;
+  auto DeleteEndValue() -> void;
+  auto GetArray() const -> MappingType;
   auto GetPointerNums() const -> int;
-  auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::EraseAll() -> void;
+  auto FindBrotherPage(BPlusTreePage *page, KeyType *key, page_id_t *bro_page_id_left, page_id_t *bro_page_id_right) const -> void;
+  auto EraseAll() -> void;
 
  private:
   // Flexible array member for page data.

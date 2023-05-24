@@ -58,7 +58,7 @@ class BPlusTree {
   auto GetRootPageId() -> page_id_t;
 
   // return the leaf size of the node
-  auto GetSize() const -> size_t;
+  auto GetMaxSize() const -> size_t;
 
   // find leaf node in the b+tree
   auto FindLeaf(BPlusTreePage *bpt_page, const KeyType &key) const -> void;
@@ -66,6 +66,11 @@ class BPlusTree {
   // insert in parent node
   auto InsertInParent(const page_id_t &old_page_id, const KeyType &key, const page_id_t &new_page_id) -> void;
 
+  void RemoveEntry(BPlusTreePage *bpt_page, const KeyType &key);
+
+  void CoalesceNodes(BPlusTreePage *bpt_page, BPlusTreePage *bro_page, bool is_predecessor, KeyType &key);
+
+  void Redistribution(BPlusTreePage *bpt_page, BPlusTreePage *bro_page, bool is_predecessor, KeyType &key); 
   // index iterator
   auto Begin() -> INDEXITERATOR_TYPE;
   auto Begin(const KeyType &key) -> INDEXITERATOR_TYPE;
