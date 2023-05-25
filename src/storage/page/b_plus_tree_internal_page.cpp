@@ -26,11 +26,11 @@ namespace bustub {
  */
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Init(page_id_t page_id, page_id_t parent_id, int max_size) {
-  page_id_ = page_id;
-  parent_page_id_ = parent_id;
-  page_type_ = IndexPageType::INTERNAL_PAGE;
-  size_ = 0;
-  max_size_ = max_size;
+  SetPageId(page_id);
+  SetParentPageId(parent_id);
+  SetPageType(IndexPageType::INTERNAL_PAGE);
+  SetSize(0);
+  SetMaxSize(max_size);
 }
 /*
  * Helper method to get/set the key associated with input "index"(a.k.a
@@ -48,21 +48,19 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetKeyAt(int index, const KeyType &key) {
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::GetPointerNums() const -> int{
-  return size_;
+  return GetSize();
 }
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::EraseAll() -> void{ 
-  auto it = array_.begin();
-  while (it != array_.end()) {
-    it = array_.erase(it);
-  }
-  size_ = 0;
+  SetSize(0);
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindBrotherPage(BPlusTreePage *page, KeyType *key, page_id_t *bro_page_id_left = -1, page_id_t *bro_page_id_right = -1) const -> void {
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindBrotherPage(BPlusTreePage *page, int *key_index, page_id_t *bro_page_id_left = -1, page_id_t *bro_page_id_right = -1) const -> void {
   auto parent_page = reinterpret_cast<BPlusTreeInternalPage *>(page);
+  bro_page_id_left = -1;
+  bro_page_id_right = -1;
   for(int i=0; i<parent_page->GetSize(); i++){
     if(parent_page->ValueAt(i) == GetPageId()){
       if(i == 0){
@@ -70,32 +68,50 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindBrotherPage(BPlusTreePage *page, KeyTyp
         //   return false;
         // }
         *bro_page_id_right = parent_page->ValueAt(i+1);
-        *key = parent_page->KeyAt(i+1);
-        return ;
-      }else{
-        *bro_page_id_left = parent_page->ValueAt(i-1);
-        // *bro_page_id_right = parent_page->ValueAt(i+1);
-        key = parent_page->KeyAt(i);
+        // *key = parent_page->KeyAt(i+1);
+        *key_index = i+1;
         return ;
       }
+      *bro_page_id_left = parent_page->ValueAt(i-1);
+      // *bro_page_id_right = parent_page->ValueAt(i+1);
+      // *key = parent_page->KeyAt(i);
+      *key_index = i;
+      return ;
     }
   }
   return ;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::GetArray() const -> MappingType { return array_; }
-
-INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::KVInsert(int index, const KeyType &key, const ValueType &value) -> bool {
   array_[index].first = key;
   array_[index].second = value;
-  size_++;
+  IncreaseSize(1);
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertAtFirst(const KeyType &key, const ValueType &value) -> void {
+  int i = GetSize()+1;
+  for( ; i>0; i--){
+    array_[i] = array_[i-1];
+  }
+  array_[1].first = key;
+  array_[0].second = value;
+  IncreaseSize(1);
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertAtEnd(const KeyType &key, const ValueType &value) -> void {
+  int i = GetSize()+1;
+  
+  array_[i].first = key;
+  array_[i].second = value;
+  IncreaseSize(1);
 }
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::InternalInsert(const KeyType &key, const ValueType &value) -> void{
-  int low = 1, high = size_, mid = 0, i = size_+1;
+  int low = 1, high = GetSize(), mid = 0, i = GetSize()+1;
   
   while(low <= high){
     mid = low + (high - low)/2;
@@ -112,7 +128,7 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::InternalInsert(const KeyType &key, const Va
 
   array_[low].first = key;
   array_[low].second = value;
-  size_++;
+  IncreaseSize(1);
 }
 
 /*
@@ -129,7 +145,7 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetValueAt(int index, const ValueType &valu
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindSmallestBiggerKV(const KeyType &key) const -> int{
-  int low = 0, high = array_.size();
+  int low = 0, high = GetSize()+1;
   while(low < high){
     if(KeyAt(low) >= key){
       return low;
@@ -139,20 +155,35 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindSmallestBiggerKV(const KeyType &key) co
   return -1;
 }
 
+// INDEX_TEMPLATE_ARGUMENTS
+// auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::GetEndValue() const -> ValueType{
+//   for(auto &value : array_){ }
+//   return array_.back();
+// }
+
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::GetEndValue() const -> ValueType{
-  for(auto &value : array_){ }
-  return array_.back();
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::DeleteEndValue(KeyType *key, ValueType *value) -> void{
+  int end = GetSize();
+
+  *key = array_[end].first;
+  *value = array_[end].second;
+  
+  IncreaseSize(-1);
+  return ;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::DeleteEndValue() -> void{
-  auto it = array_.begin();
-  while(std::next(it)!=array_.end()){
-    it++;
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::DeleteFirstValue(KeyType *key, ValueType *value) -> void{
+  *key = array_[1].first;
+  *value = array_[0].second;
+  int n = GetSize()+1;
+  array_[0].second = array_[1].second;
+  for(int i=1; i<n; i++){
+    array_[i] = array_[i+1];
   }
-  array_.erase(it);
-  size_--;
+
+  IncreaseSize(-1);
+  return ;
 }
 
 // valuetype for internalNode should be page id_t

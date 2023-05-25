@@ -46,12 +46,15 @@ class BPlusTreeInternalPage : public BPlusTreePage {
   auto InternalInsert(const KeyType &key, const ValueType &value) -> void;
   auto KVInsert(int index, const KeyType &key, const ValueType &value) -> bool;
   auto FindSmallestBiggerKV(const KeyType &key) const -> int;
-  auto GetEndValue() const -> ValueType;
-  auto DeleteEndValue() -> void;
-  auto GetArray() const -> MappingType;
+  // auto GetEndValue() const -> ValueType;
+  auto DeleteEndValue(KeyType *key, ValueType *value) -> void;
+  auto DeleteFirstValue(KeyType *key, ValueType *value) -> void;
+  // auto GetArray() const -> MappingType;
   auto GetPointerNums() const -> int;
-  auto FindBrotherPage(BPlusTreePage *page, KeyType *key, page_id_t *bro_page_id_left, page_id_t *bro_page_id_right) const -> void;
+  auto FindBrotherPage(BPlusTreePage *page, int *key_index, page_id_t *bro_page_id_left, page_id_t *bro_page_id_right) const -> void;
   auto EraseAll() -> void;
+  auto InsertAtFirst(const KeyType &key, const ValueType &value) -> void;
+  auto InsertAtEnd(const KeyType &key, const ValueType &value) -> void;
 
  private:
   // Flexible array member for page data.

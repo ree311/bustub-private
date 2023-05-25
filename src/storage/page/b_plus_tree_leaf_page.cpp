@@ -28,12 +28,12 @@ namespace bustub {
  */
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_LEAF_PAGE_TYPE::Init(page_id_t page_id, page_id_t parent_id, int max_size) {
-  page_id_ = page_id;
-  parent_page_id_ = parent_id;
-  max_size_ = max_size;
-  size_ = 0;
-  page_type_ = IndexPageType::LEAF_PAGE;
-  next_page_id_ = 0;
+  SetPageId(page_id);
+  SetParentPageId(parent_id);
+  SetMaxSize(max_size);
+  SetSize(0);
+  SetPageType(IndexPageType::LEAF_PAGE);
+  SetNextPageId(0);
 }
 
 /**
@@ -65,6 +65,11 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::SetValueAt(int index, const ValueType &value) -
 }
 
 INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::SetKeyAt(int index, const KeyType &key) -> void{
+  array_[index].first = key;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::GetKVNums() const -> size_t { return std::tuple_size<std::pair>(array_); }
 
 INDEX_TEMPLATE_ARGUMENTS
@@ -72,12 +77,12 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::KVInsert(const KeyType &key, const ValueType &v
   int n = array_.size();
   array_[n].first = key;
   array_[n].second = value;
-  size++;
+  IncreaseSize(1);
 }
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::LeafInsert(const KeyType &key, const ValueType &value) -> void{
-  int low = 1, high = size_, mid = 0, i = size_+1;
+  int low = 1, high = GetSize(), mid = 0, i = GetSize()+1;
   
   while(low <= high){
     mid = low + (high - low)/2;
@@ -94,7 +99,7 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::LeafInsert(const KeyType &key, const ValueType 
 
   array_[low].first = key;
   array_[low].second = value;
-  size_++;
+  IncreaseSize(1);
 }
 
 
@@ -120,11 +125,7 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::FindKey(const KeyType &key, ValueType *value) c
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::EraseAll() -> void{ 
-  auto it = array_.begin();
-  while (it != array_.end()) {
-    it = array_.erase(it);
-  }
-  size_ = 0;
+  SetSize(0);
 }
 
 template class BPlusTreeLeafPage<GenericKey<4>, RID, GenericComparator<4>>;
