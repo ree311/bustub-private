@@ -46,10 +46,10 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetKeyAt(int index, const KeyType &key) {
   array_[index].first = key;
 }
 
-INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::GetPointerNums() const -> int{
-  return GetSize();
-}
+// INDEX_TEMPLATE_ARGUMENTS
+// auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::GetPointerNums() const -> int{
+//   return GetSize();
+// }
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::EraseAll() -> void{ 
@@ -57,7 +57,7 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::EraseAll() -> void{
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindBrotherPage(BPlusTreePage *page, int *key_index, page_id_t *bro_page_id_left = -1, page_id_t *bro_page_id_right = -1) const -> void {
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindBrotherPage(BPlusTreePage *page, int *key_index, page_id_t *bro_page_id_left, page_id_t *bro_page_id_right) const -> void {
   auto parent_page = reinterpret_cast<BPlusTreeInternalPage *>(page);
   bro_page_id_left = -1;
   bro_page_id_right = -1;
@@ -83,7 +83,7 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindBrotherPage(BPlusTreePage *page, int *k
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::KVInsert(int index, const KeyType &key, const ValueType &value) -> bool {
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::KVInsert(int index, const KeyType &key, const ValueType &value) -> void {
   array_[index].first = key;
   array_[index].second = value;
   IncreaseSize(1);
@@ -95,8 +95,10 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertAtFirst(const KeyType &key, const Val
   for( ; i>0; i--){
     array_[i] = array_[i-1];
   }
-  array_[1].first = key;
-  array_[0].second = value;
+  if(array_.length()>1) {
+    array_[1].first = key;
+    array_[0].second = value;
+  }
   IncreaseSize(1);
 }
 
@@ -110,12 +112,12 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertAtEnd(const KeyType &key, const Value
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::InternalInsert(const KeyType &key, const ValueType &value) -> void{
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::InternalInsert(const KeyType &key, const ValueType &value, const KeyComparator &cmp) -> void{
   int low = 1, high = GetSize(), mid = 0, i = GetSize()+1;
   
   while(low <= high){
     mid = low + (high - low)/2;
-    if(array_[mid].first < key){
+    if(cmp(array_[mid].first, key) < 0){
       low = mid+1;
     }else{
       high = mid-1;
@@ -144,10 +146,10 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetValueAt(int index, const ValueType &valu
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindSmallestBiggerKV(const KeyType &key) const -> int{
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindSmallestBiggerKV(const KeyType &key, const KeyComparator &cmp) const -> int{
   int low = 0, high = GetSize()+1;
   while(low < high){
-    if(KeyAt(low) >= key){
+    if(cmp(KeyAt(low), key) >= 0){
       return low;
     }
     low++;

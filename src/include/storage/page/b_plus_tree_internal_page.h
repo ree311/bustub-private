@@ -43,14 +43,14 @@ class BPlusTreeInternalPage : public BPlusTreePage {
   void SetKeyAt(int index, const KeyType &key);
   auto ValueAt(int index) const -> ValueType;
   auto SetValueAt(int index, const ValueType &value) -> void;
-  auto InternalInsert(const KeyType &key, const ValueType &value) -> void;
-  auto KVInsert(int index, const KeyType &key, const ValueType &value) -> bool;
-  auto FindSmallestBiggerKV(const KeyType &key) const -> int;
+  auto InternalInsert(const KeyType &key, const ValueType &value, const KeyComparator &cmp) -> void;
+  auto KVInsert(int index, const KeyType &key, const ValueType &value) -> void;
+  auto FindSmallestBiggerKV(const KeyType &key, const KeyComparator &cmp) const -> int;
   // auto GetEndValue() const -> ValueType;
   auto DeleteEndValue(KeyType *key, ValueType *value) -> void;
   auto DeleteFirstValue(KeyType *key, ValueType *value) -> void;
   // auto GetArray() const -> MappingType;
-  auto GetPointerNums() const -> int;
+  // auto GetPointerNums() const -> int;
   auto FindBrotherPage(BPlusTreePage *page, int *key_index, page_id_t *bro_page_id_left, page_id_t *bro_page_id_right) const -> void;
   auto EraseAll() -> void;
   auto InsertAtFirst(const KeyType &key, const ValueType &value) -> void;

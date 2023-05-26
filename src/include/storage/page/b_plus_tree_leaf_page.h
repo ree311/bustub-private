@@ -53,9 +53,9 @@ class BPlusTreeLeafPage : public BPlusTreePage {
   auto SetValueAt(int index, const ValueType &value) -> void;
   auto SetKeyAt(int index, const KeyType &key) -> void;
   auto EraseAll() -> void;
-  auto LeafInsert(const KeyType &key, const ValueType &value) -> void;
-  auto FindKey(const KeyType &key, ValueType *value) const -> bool;
-  auto KVInsert(const KeyType &key, const ValueType &value) -> bool;
+  auto LeafInsert(const KeyType &key, const ValueType &value, const KeyComparator &cmp) -> void;
+  auto FindKey(const KeyType &key, ValueType *value, const KeyComparator &cmp) const -> bool;
+  auto KVInsert(int index, const KeyType &key, const ValueType &value) -> bool;
   auto GetKVNums() const -> size_t;
   auto GetArray() const -> MappingType;
 

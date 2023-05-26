@@ -61,10 +61,10 @@ class BPlusTree {
   auto GetMaxSize() const -> size_t;
 
   // find leaf node in the b+tree
-  auto FindLeaf(BPlusTreePage *bpt_page, const KeyType &key) const -> void;
+  auto FindLeaf(BPlusTreePage *bpt_page, const KeyType &key, const KeyComparator &cmp) const -> void;
 
   // insert in parent node
-  auto InsertInParent(const page_id_t &old_page_id, const KeyType &key, const page_id_t &new_page_id) -> void;
+  auto InsertInParent(BPlusTreePage *old_page, const KeyType &key, BPlusTreePage *new_page) -> void;
 
   void RemoveEntry(BPlusTreePage *bpt_page, const KeyType &key);
 

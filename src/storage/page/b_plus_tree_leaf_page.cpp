@@ -73,20 +73,19 @@ INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::GetKVNums() const -> size_t { return std::tuple_size<std::pair>(array_); }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_LEAF_PAGE_TYPE::KVInsert(const KeyType &key, const ValueType &value) -> bool {
-  int n = array_.size();
-  array_[n].first = key;
-  array_[n].second = value;
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::KVInsert(int index, const KeyType &key, const ValueType &value) -> bool {
+  array_[index].first = key;
+  array_[index].second = value;
   IncreaseSize(1);
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_LEAF_PAGE_TYPE::LeafInsert(const KeyType &key, const ValueType &value) -> void{
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::LeafInsert(const KeyType &key, const ValueType &value, const KeyComparator &cmp) -> void{
   int low = 1, high = GetSize(), mid = 0, i = GetSize()+1;
   
   while(low <= high){
     mid = low + (high - low)/2;
-    if(array_[mid].first < key){
+    if(cmp(array_[mid].first, key) < 0){
       low = mid+1;
     }else{
       high = mid-1;
@@ -107,14 +106,14 @@ INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::GetArray() const -> MappingType{ return array_; }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_LEAF_PAGE_TYPE::FindKey(const KeyType &key, ValueType *value) const -> bool {
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::FindKey(const KeyType &key, ValueType *value, const KeyComparator &cmp) const -> bool {
   int low = 0, high = array_.size(), temp = 0;
   while(low < high){
     temp = (low+high) / 2;
-    if(array_[temp].first == key){
+    if(cmp(array_[temp].first, key) == 0){
       *value = array_[temp].second;
       return true;
-    }else if(array_[temp].first > key){
+    }else if(cmp(array_[temp].first, key) > 0){
       high = temp;
     }else {
       low = temp;
