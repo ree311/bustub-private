@@ -55,9 +55,14 @@ class BPlusTreeLeafPage : public BPlusTreePage {
   auto EraseAll() -> void;
   auto LeafInsert(const KeyType &key, const ValueType &value, const KeyComparator &cmp) -> void;
   auto FindKey(const KeyType &key, ValueType *value, const KeyComparator &cmp) const -> bool;
-  auto KVInsert(int index, const KeyType &key, const ValueType &value) -> bool;
-  auto GetKVNums() const -> size_t;
-  auto GetArray() const -> MappingType;
+  auto KVInsert(int index, const KeyType &key, const ValueType &value) -> void;
+  auto DeleteKey(const KeyType &key, const KeyComparator &cmp) -> void;
+  auto CopyNTo(BPlusTreeLeafPage *leaf_page, const int &size) -> void;
+  auto CopyNFrom(MappingType *item, const int &size) -> void;
+  auto DeleteEndValue() -> void;
+  auto DeleteFirstValue() -> void;
+  auto InsertAtFirst(const KeyType &key, const ValueType &value) -> void;
+  auto InsertAtEnd(const KeyType &key, const ValueType &value) -> void;
 
  private:
   page_id_t next_page_id_;

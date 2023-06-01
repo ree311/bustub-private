@@ -13,6 +13,7 @@
 #include <sstream>
 
 #include "common/exception.h"
+#include "common/logger.h"
 #include "storage/page/b_plus_tree_internal_page.h"
 
 namespace bustub {
@@ -37,14 +38,10 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Init(page_id_t page_id, page_id_t parent_id
  * array offset)
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::KeyAt(int index) const -> KeyType {
-  return array_[index].first;
-}
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::KeyAt(int index) const -> KeyType { return array_[index].first; }
 
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetKeyAt(int index, const KeyType &key) {
-  array_[index].first = key;
-}
+void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetKeyAt(int index, const KeyType &key) { array_[index].first = key; }
 
 // INDEX_TEMPLATE_ARGUMENTS
 // auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::GetPointerNums() const -> int{
@@ -52,34 +49,33 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetKeyAt(int index, const KeyType &key) {
 // }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::EraseAll() -> void{ 
-  SetSize(0);
-}
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::EraseAll() -> void { SetSize(0); }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindBrotherPage(BPlusTreePage *page, int *key_index, page_id_t *bro_page_id_left, page_id_t *bro_page_id_right) const -> void {
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindBrotherPage(BPlusTreePage *page, int *key_index, page_id_t *bro_page_id_left,
+                                                     page_id_t *bro_page_id_right) const -> void {
   auto parent_page = reinterpret_cast<BPlusTreeInternalPage *>(page);
-  bro_page_id_left = -1;
-  bro_page_id_right = -1;
-  for(int i=0; i<parent_page->GetSize(); i++){
-    if(parent_page->ValueAt(i) == GetPageId()){
-      if(i == 0){
+  *bro_page_id_left = INVALID_PAGE_ID;
+  *bro_page_id_right = INVALID_PAGE_ID;
+  for (int i = 0; i < parent_page->GetSize(); i++) {
+    if (parent_page->ValueAt(i) == GetPageId()) {
+      if (i == 0) {
         // if(parent_page->GetSize() == 1){
         //   return false;
         // }
-        *bro_page_id_right = parent_page->ValueAt(i+1);
+        *bro_page_id_right = parent_page->ValueAt(i + 1);
         // *key = parent_page->KeyAt(i+1);
-        *key_index = i+1;
-        return ;
+        *key_index = i + 1;
+        return;
       }
-      *bro_page_id_left = parent_page->ValueAt(i-1);
+      *bro_page_id_left = parent_page->ValueAt(i - 1);
       // *bro_page_id_right = parent_page->ValueAt(i+1);
       // *key = parent_page->KeyAt(i);
       *key_index = i;
-      return ;
+      return;
     }
   }
-  return ;
+  return;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
@@ -91,41 +87,43 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::KVInsert(int index, const KeyType &key, con
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertAtFirst(const KeyType &key, const ValueType &value) -> void {
-  int i = GetSize()+1;
-  for( ; i>0; i--){
-    array_[i] = array_[i-1];
+  int i = GetSize() + 1;
+  for (; i > 0; i--) {
+    array_[i] = array_[i - 1];
   }
-  if(array_.length()>1) {
-    array_[1].first = key;
-    array_[0].second = value;
-  }
+
+  SetKeyAt(1, key);
+  // array_[1].first = key;
+  array_[0].second = value;
+
   IncreaseSize(1);
 }
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertAtEnd(const KeyType &key, const ValueType &value) -> void {
-  int i = GetSize()+1;
-  
+  int i = GetSize() + 1;
+
   array_[i].first = key;
   array_[i].second = value;
   IncreaseSize(1);
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::InternalInsert(const KeyType &key, const ValueType &value, const KeyComparator &cmp) -> void{
-  int low = 1, high = GetSize(), mid = 0, i = GetSize()+1;
-  
-  while(low <= high){
-    mid = low + (high - low)/2;
-    if(cmp(array_[mid].first, key) < 0){
-      low = mid+1;
-    }else{
-      high = mid-1;
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::InternalInsert(const KeyType &key, const ValueType &value,
+                                                    const KeyComparator &cmp) -> void {
+  int low = 1, high = GetSize(), mid = 0, i = GetSize() + 1;
+
+  while (low <= high) {
+    mid = low + (high - low) / 2;
+    if (cmp(array_[mid].first, key) < 0) {
+      low = mid + 1;
+    } else {
+      high = mid - 1;
     }
   }
-  
-  for(; i>low; i--){
-    array_[i] = array_[i-1];
+
+  for (; i > low; i--) {
+    array_[i] = array_[i - 1];
   }
 
   array_[low].first = key;
@@ -141,20 +139,22 @@ INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueAt(int index) const -> ValueType { return array_[index].second; }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetValueAt(int index, const ValueType &value) -> void{
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetValueAt(int index, const ValueType &value) -> void {
   array_[index].second = value;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindSmallestBiggerKV(const KeyType &key, const KeyComparator &cmp) const -> int{
-  int low = 0, high = GetSize()+1;
-  while(low < high){
-    if(cmp(KeyAt(low), key) >= 0){
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindSmallestBiggerKV(const KeyType &key, const KeyComparator &cmp) const -> int {
+  int low = 1, high = GetSize() + 1;
+  while (low < high) {
+    if (cmp(KeyAt(low), key) < 0) {
+      LOG_INFO("# [bpt FindSmall] now low is %d, which is smaller than key:%ld", low, key.ToString());
+      low++;
+    }else{
       return low;
     }
-    low++;
   }
-  return -1;
+  return GetSize();
 }
 
 // INDEX_TEMPLATE_ARGUMENTS
@@ -164,28 +164,42 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindSmallestBiggerKV(const KeyType &key, co
 // }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::DeleteEndValue(KeyType *key, ValueType *value) -> void{
-  int end = GetSize();
-
-  *key = array_[end].first;
-  *value = array_[end].second;
-  
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::DeleteEndValue() -> void {
   IncreaseSize(-1);
-  return ;
+  return;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::DeleteFirstValue(KeyType *key, ValueType *value) -> void{
-  *key = array_[1].first;
-  *value = array_[0].second;
-  int n = GetSize()+1;
-  array_[0].second = array_[1].second;
-  for(int i=1; i<n; i++){
-    array_[i] = array_[i+1];
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::DeleteFirstValue() -> void {
+  int n = GetSize() + 1;
+  SetValueAt(1, array_[0].second);
+  // array_[0].second = array_[1].second;
+  for (int i = 1; i < n; i++) {
+    array_[i] = array_[i + 1];
   }
 
   IncreaseSize(-1);
-  return ;
+  return;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::DeleteKey(const KeyType &key, const KeyComparator &cmp) -> void {
+  int low = 1, high = GetSize() + 1, mid = 0, i = GetSize() + 1;
+
+  while (low <= high) {
+    mid = low + (high - low) / 2;
+    if (cmp(array_[mid].first, key) < 0) {
+      low = mid + 1;
+    } else {
+      high = mid - 1;
+    }
+  }
+
+  for (; low < i; low++) {
+    array_[low] = array_[low + 1];
+  }
+
+  IncreaseSize(-1);
 }
 
 // valuetype for internalNode should be page id_t

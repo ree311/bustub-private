@@ -68,9 +68,10 @@ class BPlusTree {
 
   void RemoveEntry(BPlusTreePage *bpt_page, const KeyType &key);
 
-  void CoalesceNodes(BPlusTreePage *bpt_page, BPlusTreePage *bro_page, bool is_predecessor, KeyType &key);
+  void CoalesceNodes(BPlusTreePage *bpt_page, BPlusTreePage *bro_page, bool is_predecessor, const KeyType &key);
 
-  auto Redistribution(BPlusTreePage *bpt_page, BPlusTreePage *bro_page, bool is_predecessor, KeyType &key) -> KeyType; 
+  auto Redistribution(BPlusTreePage *bpt_page, BPlusTreePage *bro_page, bool is_predecessor, const KeyType &key)
+      -> KeyType;
   // index iterator
   auto Begin() -> INDEXITERATOR_TYPE;
   auto Begin(const KeyType &key) -> INDEXITERATOR_TYPE;
