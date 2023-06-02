@@ -38,7 +38,8 @@ auto BPLUSTREE_TYPE::GetMaxSize() const -> size_t { return leaf_max_size_; }
  * Helper function to find the leafnode int the current b+tree
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::FindLeaf(BPlusTreePage *bpt_page, const KeyType &key, const KeyComparator &cmp) const -> BPlusTreePage *{
+auto BPLUSTREE_TYPE::FindLeaf(BPlusTreePage *bpt_page, const KeyType &key, const KeyComparator &cmp) const
+    -> BPlusTreePage * {
   if (bpt_page->IsLeafPage()) {
     auto leaf_page = reinterpret_cast<LeafPage *>(bpt_page);
     LOG_INFO("# [bpt FindLeaf]leaf finded!which has the first key:%ld", leaf_page->KeyAt(0).ToString());
@@ -49,9 +50,9 @@ auto BPLUSTREE_TYPE::FindLeaf(BPlusTreePage *bpt_page, const KeyType &key, const
   Page *node_page;
   int index = internal_page->FindSmallestBiggerKV(key, cmp);
   LOG_INFO("# [bpt FindLeaf]next index is %d", index);
-  
+
   node_page = buffer_pool_manager_->FetchPage(internal_page->ValueAt(index));
-  
+
   buffer_pool_manager_->UnpinPage(internal_page->GetPageId(), false);
   auto new_page = reinterpret_cast<BPlusTreePage *>(node_page->GetData());
   return FindLeaf(new_page, key, cmp);
@@ -71,7 +72,6 @@ auto BPLUSTREE_TYPE::InsertInParent(BPlusTreePage *old_page, const KeyType &key,
   auto new_internal_page = reinterpret_cast<InternalPage *>(new_page);
 
   if (internal_page->IsRootPage()) {
-    
     page_id_t new_root_page_id;
     Page *new_root_page = buffer_pool_manager_->NewPage(&new_root_page_id);
     auto new_root_internal_page = reinterpret_cast<InternalPage *>(new_root_page->GetData());
@@ -95,42 +95,49 @@ auto BPLUSTREE_TYPE::InsertInParent(BPlusTreePage *old_page, const KeyType &key,
   buffer_pool_manager_->UnpinPage(old_page->GetPageId(), true);
   Page *parent_page = buffer_pool_manager_->FetchPage(parent_page_id);
   auto parent_bpt_page = reinterpret_cast<InternalPage *>(parent_page->GetData());
+
   if (parent_bpt_page->GetSize() < internal_max_size_) {
     LOG_INFO("# [bpt InsertInParent]parent node is not full, do insert");
     parent_bpt_page->InternalInsert(key, new_page->GetPageId(), comparator_);
-  } else {
-    LOG_INFO("# [bpt InsertInParent]parent node is full, do split");
-    page_id_t copy_page_id;
-    Page *copy_page = buffer_pool_manager_->NewPage(&copy_page_id);
-    auto internal_copy_page = reinterpret_cast<InternalPage *>(copy_page->GetData());
-    internal_copy_page->Init(copy_page_id, parent_bpt_page->GetParentPageId(), internal_max_size_);
-
-    for (int i = 0; i < parent_bpt_page->GetSize(); i++) {
-      internal_copy_page->SetKeyAt(i, parent_bpt_page->KeyAt(i));
-      internal_copy_page->SetValueAt(i, parent_bpt_page->ValueAt(i));
-      internal_copy_page->IncreaseSize(1);
-    }
-
-    internal_copy_page->InternalInsert(key, new_page->GetPageId(), comparator_);
-    parent_bpt_page->EraseAll();
-
-    page_id_t new_parent_page_id;
-    Page *new_parent_page = buffer_pool_manager_->NewPage(&new_parent_page_id);
-    auto new_parent_internal_bpt_page = reinterpret_cast<InternalPage *>(new_parent_page->GetData());
-    new_parent_internal_bpt_page->Init(new_parent_page_id, parent_bpt_page->GetParentPageId(), internal_max_size_);
-    int i = 0, n = internal_max_size_;
-    while (i < n / 2) {
-      parent_bpt_page->InsertAtEnd(internal_copy_page->KeyAt(i), internal_copy_page->ValueAt(i));
-      i++;
-    }
-    KeyType new_key = internal_copy_page->KeyAt(i);
-    while (i < n) {
-      new_parent_internal_bpt_page->InsertAtEnd(internal_copy_page->KeyAt(i), internal_copy_page->ValueAt(i));
-      i++;
-    }
-    buffer_pool_manager_->DeletePage(copy_page_id);
-    InsertInParent(parent_bpt_page, new_key, new_parent_internal_bpt_page);
+    new_page->SetParentPageId(parent_page_id);
+    buffer_pool_manager_->UnpinPage(old_page->GetPageId(), true);
+    buffer_pool_manager_->UnpinPage(new_page->GetPageId(), true);
+    buffer_pool_manager_->UnpinPage(parent_page_id, true);
+    return;
   }
+
+  LOG_INFO("# [bpt InsertInParent]parent node is full, do split");
+  page_id_t copy_page_id;
+  Page *copy_page = buffer_pool_manager_->NewPage(&copy_page_id);
+  auto internal_copy_page = reinterpret_cast<InternalPage *>(copy_page->GetData());
+  internal_copy_page->Init(copy_page_id, parent_bpt_page->GetParentPageId(), internal_max_size_);
+
+  for (int i = 0; i < parent_bpt_page->GetSize(); i++) {
+    internal_copy_page->SetKeyAt(i, parent_bpt_page->KeyAt(i));
+    internal_copy_page->SetValueAt(i, parent_bpt_page->ValueAt(i));
+    internal_copy_page->IncreaseSize(1);
+  }
+
+  internal_copy_page->InternalInsert(key, new_page->GetPageId(), comparator_);
+  parent_bpt_page->EraseAll();
+
+  page_id_t new_parent_page_id;
+  Page *new_parent_page = buffer_pool_manager_->NewPage(&new_parent_page_id);
+  auto new_parent_internal_bpt_page = reinterpret_cast<InternalPage *>(new_parent_page->GetData());
+  new_parent_internal_bpt_page->Init(new_parent_page_id, parent_bpt_page->GetParentPageId(), internal_max_size_);
+  int i = 0, n = internal_max_size_;
+  while (i < n / 2) {
+    parent_bpt_page->InsertAtEnd(internal_copy_page->KeyAt(i), internal_copy_page->ValueAt(i));
+    i++;
+  }
+  KeyType new_key = internal_copy_page->KeyAt(i);
+  while (i < n) {
+    new_parent_internal_bpt_page->InsertAtEnd(internal_copy_page->KeyAt(i), internal_copy_page->ValueAt(i));
+    i++;
+  }
+  
+  buffer_pool_manager_->DeletePage(copy_page_id);
+  InsertInParent(parent_bpt_page, new_key, new_parent_internal_bpt_page);
 }
 
 /*****************************************************************************
@@ -191,13 +198,13 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
   Page *page = buffer_pool_manager_->FetchPage(current_root_id);
   BPlusTreePage *bpt_page = reinterpret_cast<BPlusTreePage *>(page->GetData());
   // debug lines, wait to delete
-  
-  auto temp_leaf_page = reinterpret_cast<InternalPage *>(bpt_page);
-  LOG_INFO("# [bpt Insert] Now the root's first key is:%ld", temp_leaf_page->KeyAt(1).ToString());
+
+  auto temp_page = reinterpret_cast<InternalPage *>(bpt_page);
+  LOG_INFO("# [bpt Insert] Now the root's first key is:%ld", temp_page->KeyAt(1).ToString());
 
   auto leaf_page = reinterpret_cast<LeafPage *>(FindLeaf(bpt_page, key, comparator_));
   LOG_INFO("# [bpt Insert]parent_page_id:%d", leaf_page->GetParentPageId());
-  if (leaf_page->GetSize() < leaf_max_size_-1) {
+  if (leaf_page->GetSize() < leaf_max_size_ - 1) {
     // InsertInLeaf(bpt_page, key, value);
     LOG_INFO("# [bpt Insert]leaf node is not full, do insert");
     leaf_page->LeafInsert(key, value, comparator_);
@@ -207,7 +214,7 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
     Page *new_parent_page = buffer_pool_manager_->NewPage(&new_parent_page_id);
     auto new_leaf_page = reinterpret_cast<LeafPage *>(new_parent_page->GetData());
     new_leaf_page->Init(new_parent_page_id, leaf_page->GetParentPageId(), leaf_max_size_);
-    
+
     page_id_t new_page_id;
     Page *new_page = buffer_pool_manager_->NewPage(&new_page_id);
     auto temp_leaf_page = reinterpret_cast<LeafPage *>(new_page->GetData());
@@ -226,15 +233,15 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
     //     temp_leaf_page->IncreaseSize(1);
     //   }
     // }else{
-      // LOG_INFO("# [bpt Insert] l is not root, copy to 0 index");
-      for (int i = 0; i < leaf_page->GetSize(); i++) {
-        //LOG_INFO("# [bpt Insert] now got key:%ld", leaf_page->KeyAt(i).ToString());
-        temp_leaf_page->SetKeyAt(i, leaf_page->KeyAt(i));
-        temp_leaf_page->SetValueAt(i, leaf_page->ValueAt(i));
-        temp_leaf_page->IncreaseSize(1);
-      }
+    // LOG_INFO("# [bpt Insert] l is not root, copy to 0 index");
+    for (int i = 0; i < leaf_page->GetSize(); i++) {
+      // LOG_INFO("# [bpt Insert] now got key:%ld", leaf_page->KeyAt(i).ToString());
+      temp_leaf_page->SetKeyAt(i, leaf_page->KeyAt(i));
+      temp_leaf_page->SetValueAt(i, leaf_page->ValueAt(i));
+      temp_leaf_page->IncreaseSize(1);
+    }
     // }
-    
+
     // InsertInLeaf(leaf_page, key, value);
     temp_leaf_page->LeafInsert(key, value, comparator_);
 
@@ -259,9 +266,10 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
       new_leaf_page->KVInsert(j++, temp_leaf_page->KeyAt(i), temp_leaf_page->ValueAt(i));
     }
     buffer_pool_manager_->DeletePage(new_page_id);
-    LOG_INFO("# [bpt Insert] new l, key:%ld, parent_page_id:%d", new_leaf_page->KeyAt(0).ToString(), new_leaf_page->GetParentPageId());
+    LOG_INFO("# [bpt Insert] new l, key:%ld, parent_page_id:%d", new_leaf_page->KeyAt(0).ToString(),
+             new_leaf_page->GetParentPageId());
     InsertInParent(leaf_page, new_leaf_page->KeyAt(0), new_leaf_page);
-    LOG_INFO("# [bpt Insert] after insert in parent, parent_page_id:%d", leaf_page->GetParentPageId());
+    LOG_INFO("# [bpt Insert] after insert in parent, parent_page_id:%d, %d", leaf_page->GetParentPageId(), new_leaf_page->GetParentPageId());
   }
   return true;
 }

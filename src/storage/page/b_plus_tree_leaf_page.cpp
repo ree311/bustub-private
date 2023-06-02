@@ -12,9 +12,9 @@
 #include <sstream>
 
 #include "common/exception.h"
+#include "common/logger.h"
 #include "common/rid.h"
 #include "storage/page/b_plus_tree_leaf_page.h"
-#include "common/logger.h"
 
 namespace bustub {
 
@@ -34,7 +34,7 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::Init(page_id_t page_id, page_id_t parent_id, in
   SetMaxSize(max_size);
   SetSize(0);
   SetPageType(IndexPageType::LEAF_PAGE);
-  SetNextPageId(0);
+  SetNextPageId(INVALID_PAGE_ID);
 }
 
 /**
@@ -87,7 +87,6 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::InsertAtFirst(const KeyType &key, const ValueTy
     array_[i] = array_[i - 1];
   }
 
-  
   array_[0].first = key;
   array_[0].second = value;
 

@@ -87,7 +87,6 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::KVInsert(int index, const KeyType &key, con
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertAtFirst(const KeyType &key, const ValueType &value) -> void {
-  
   for (int i = GetSize(); i > 1; i--) {
     array_[i] = array_[i - 1];
   }
@@ -112,7 +111,7 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::InternalInsert(const KeyType &key, const Va
                                                     const KeyComparator &cmp) -> void {
   int low = 1, high = GetSize(), mid = 0, i = GetSize();
 
-  while (low <= high) {
+  while (low < high) {
     mid = low + (high - low) / 2;
     if (cmp(array_[mid].first, key) < 0) {
       low = mid + 1;
@@ -124,7 +123,7 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::InternalInsert(const KeyType &key, const Va
   for (; i > low; i--) {
     array_[i] = array_[i - 1];
   }
-
+  LOG_INFO("# [bpt InternalInsert] now got key:%ld at index:%d", key.ToString(), low);
   array_[low].first = key;
   array_[low].second = value;
   IncreaseSize(1);
@@ -149,11 +148,11 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindSmallestBiggerKV(const KeyType &key, co
     if (cmp(KeyAt(low), key) < 0) {
       LOG_INFO("# [bpt FindSmall] now low is %d, which is smaller than key:%ld", low, key.ToString());
       low++;
-    }else{
+    } else {
       return low;
     }
   }
-  return GetSize()-1;
+  return GetSize() - 1;
 }
 
 // INDEX_TEMPLATE_ARGUMENTS

@@ -206,7 +206,6 @@ auto BufferPoolManagerInstance::FlushPgImp(page_id_t page_id) -> bool {
   }
   frame_id_t flush_frame;
   if (page_table_->Find(page_id, flush_frame)) {
-
     pages_[flush_frame].is_dirty_ = false;
     disk_manager_->WritePage(page_id, pages_[flush_frame].GetData());
     // LOG_INFO("# [FlushPgImp] Page %d flushed", page_id);
