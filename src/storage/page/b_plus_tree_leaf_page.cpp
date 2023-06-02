@@ -82,13 +82,13 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::KVInsert(int index, const KeyType &key, const V
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::InsertAtFirst(const KeyType &key, const ValueType &value) -> void {
-  int i = GetSize() + 1;
+  int i = GetSize();
   for (; i > 0; i--) {
     array_[i] = array_[i - 1];
   }
 
-  SetKeyAt(1, key);
-  // array_[1].first = key;
+  
+  array_[0].first = key;
   array_[0].second = value;
 
   IncreaseSize(1);
@@ -96,7 +96,7 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::InsertAtFirst(const KeyType &key, const ValueTy
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::InsertAtEnd(const KeyType &key, const ValueType &value) -> void {
-  int i = GetSize() + 1;
+  int i = GetSize();
 
   array_[i].first = key;
   array_[i].second = value;
@@ -106,13 +106,7 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::InsertAtEnd(const KeyType &key, const ValueType
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::LeafInsert(const KeyType &key, const ValueType &value, const KeyComparator &cmp)
     -> void {
-  int low = 1, high = GetSize() + 1, mid = 0, i = GetSize() + 1;
-
-  // if(GetSize() == 0){
-  //   array_[low] = MappingType{key, value};
-  //   IncreaseSize(1);
-  //   return ;
-  // }
+  int low = 0, high = GetSize(), mid = 0, i = GetSize();
 
   while (low < high) {
     mid = low + (high - low) / 2;
@@ -134,7 +128,7 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::LeafInsert(const KeyType &key, const ValueType 
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::DeleteKey(const KeyType &key, const KeyComparator &cmp) -> void {
-  int low = 1, high = GetSize() + 1, mid = 0, i = GetSize() + 1;
+  int low = 0, high = GetSize(), mid = 0, i = GetSize();
 
   while (low <= high) {
     mid = low + (high - low) / 2;
@@ -154,9 +148,9 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::DeleteKey(const KeyType &key, const KeyComparat
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::FindKey(const KeyType &key, ValueType *value, const KeyComparator &cmp) const -> bool {
-  int low = 0, high = GetSize() + 1, temp = 0;
+  int low = 0, high = GetSize(), temp = 0;
   while (low < high) {
-    temp = (low + high) / 2;
+    temp = low + (high - low) / 2;
     if (cmp(array_[temp].first, key) == 0) {
       *value = array_[temp].second;
       return true;
@@ -180,10 +174,9 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::DeleteEndValue() -> void {
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::DeleteFirstValue() -> void {
-  int n = GetSize() + 1;
-  SetValueAt(1, array_[0].second);
-  // array_[0].second = array_[1].second;
-  for (int i = 1; i < n; i++) {
+  int n = GetSize();
+
+  for (int i = 0; i < n; i++) {
     array_[i] = array_[i + 1];
   }
 

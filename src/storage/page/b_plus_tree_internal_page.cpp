@@ -87,21 +87,20 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::KVInsert(int index, const KeyType &key, con
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertAtFirst(const KeyType &key, const ValueType &value) -> void {
-  int i = GetSize() + 1;
-  for (; i > 0; i--) {
+  
+  for (int i = GetSize(); i > 1; i--) {
     array_[i] = array_[i - 1];
   }
 
   SetKeyAt(1, key);
-  // array_[1].first = key;
-  array_[0].second = value;
+  SetValueAt(1, value);
 
   IncreaseSize(1);
 }
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertAtEnd(const KeyType &key, const ValueType &value) -> void {
-  int i = GetSize() + 1;
+  int i = GetSize();
 
   array_[i].first = key;
   array_[i].second = value;
@@ -111,7 +110,7 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertAtEnd(const KeyType &key, const Value
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::InternalInsert(const KeyType &key, const ValueType &value,
                                                     const KeyComparator &cmp) -> void {
-  int low = 1, high = GetSize(), mid = 0, i = GetSize() + 1;
+  int low = 1, high = GetSize(), mid = 0, i = GetSize();
 
   while (low <= high) {
     mid = low + (high - low) / 2;
@@ -145,7 +144,7 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetValueAt(int index, const ValueType &valu
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindSmallestBiggerKV(const KeyType &key, const KeyComparator &cmp) const -> int {
-  int low = 1, high = GetSize() + 1;
+  int low = 1, high = GetSize();
   while (low < high) {
     if (cmp(KeyAt(low), key) < 0) {
       LOG_INFO("# [bpt FindSmall] now low is %d, which is smaller than key:%ld", low, key.ToString());
@@ -154,7 +153,7 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindSmallestBiggerKV(const KeyType &key, co
       return low;
     }
   }
-  return GetSize();
+  return GetSize()-1;
 }
 
 // INDEX_TEMPLATE_ARGUMENTS
@@ -171,7 +170,7 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::DeleteEndValue() -> void {
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::DeleteFirstValue() -> void {
-  int n = GetSize() + 1;
+  int n = GetSize();
   SetValueAt(1, array_[0].second);
   // array_[0].second = array_[1].second;
   for (int i = 1; i < n; i++) {
@@ -184,7 +183,7 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::DeleteFirstValue() -> void {
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::DeleteKey(const KeyType &key, const KeyComparator &cmp) -> void {
-  int low = 1, high = GetSize() + 1, mid = 0, i = GetSize() + 1;
+  int low = 1, high = GetSize(), mid = 0, i = GetSize();
 
   while (low <= high) {
     mid = low + (high - low) / 2;
