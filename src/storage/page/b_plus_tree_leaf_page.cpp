@@ -153,7 +153,7 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::FindKey(const KeyType &key, ValueType *value, c
     if (cmp(array_[mid].first, key) < 0) {
       low = mid + 1;
     } else {
-      high = mid - 1;
+      high = mid;
     }
   }
   if (cmp(array_[low].first, key) == 0) {

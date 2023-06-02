@@ -144,6 +144,9 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetValueAt(int index, const ValueType &valu
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindSmallestBiggerKV(const KeyType &key, const KeyComparator &cmp) const -> int {
   int low = 1, high = GetSize();
+  if(cmp(KeyAt(1), key) > 0){
+    return 0;
+  }
   while (low < high) {
     if (cmp(KeyAt(low), key) < 0) {
       LOG_INFO("# [bpt FindSmall] now low is %d, which is smaller than key:%ld", low, key.ToString());
