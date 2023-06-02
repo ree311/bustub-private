@@ -129,7 +129,7 @@ INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::DeleteKey(const KeyType &key, const KeyComparator &cmp) -> void {
   int low = 0, high = GetSize(), mid = 0, i = GetSize();
 
-  while (low <= high) {
+  while (low < high) {
     mid = low + (high - low) / 2;
     if (cmp(array_[mid].first, key) < 0) {
       low = mid + 1;
@@ -147,18 +147,21 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::DeleteKey(const KeyType &key, const KeyComparat
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::FindKey(const KeyType &key, ValueType *value, const KeyComparator &cmp) const -> bool {
-  int low = 0, high = GetSize(), temp = 0;
+  int low = 0, high = GetSize(), mid = 0;
   while (low < high) {
-    temp = low + (high - low) / 2;
-    if (cmp(array_[temp].first, key) == 0) {
-      *value = array_[temp].second;
-      return true;
-    } else if (cmp(array_[temp].first, key) > 0) {
-      high = temp;
+    mid = low + (high - low) / 2;
+    if (cmp(array_[mid].first, key) < 0) {
+      low = mid + 1;
     } else {
-      low = temp;
+      high = mid - 1;
     }
   }
+  if (cmp(array_[low].first, key) == 0) {
+      LOG_INFO("# [bpt FindKey] find key:%ld at index:%d", key.ToString(), low);
+      *value = array_[low].second;
+      return true;
+  }  
+  LOG_INFO("# [bpt FindKey] can't find key:%ld", key.ToString());
   return false;
 }
 
