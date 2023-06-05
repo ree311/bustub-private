@@ -127,18 +127,18 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::LeafInsert(const KeyType &key, const ValueType 
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::DeleteKey(const KeyType &key, const KeyComparator &cmp) -> void {
-  int low = 0, high = GetSize(), mid = 0, i = GetSize();
+  int low = 0, high = GetSize(), mid = 0;
 
   while (low < high) {
     mid = low + (high - low) / 2;
     if (cmp(array_[mid].first, key) < 0) {
       low = mid + 1;
     } else {
-      high = mid - 1;
+      high = mid;
     }
   }
 
-  for (; low < i; low++) {
+  for (; low < GetSize(); low++) {
     array_[low] = array_[low + 1];
   }
 

@@ -130,6 +130,10 @@ auto BPLUSTREE_TYPE::InsertInParent(BPlusTreePage *old_page, const KeyType &key,
     LOG_INFO("# [bpt InsertInParent] first half, i:%d, key:%ld", i, internal_copy_page->KeyAt(i).ToString());
     parent_bpt_page->SetKeyAt(i, internal_copy_page->KeyAt(i));
     parent_bpt_page->SetValueAt(i, internal_copy_page->ValueAt(i));
+    Page *temp_page = buffer_pool_manager_->FetchPage(internal_copy_page->ValueAt(i));
+    auto temp_leaf_page = reinterpret_cast<LeafPage *>(temp_page);
+    temp_leaf_page->SetParentPageId(parent_page_id);
+    buffer_pool_manager_->UnpinPage(internal_copy_page->ValueAt(i), true);
     parent_bpt_page->IncreaseSize(1);
     i++;
   }
@@ -139,14 +143,19 @@ auto BPLUSTREE_TYPE::InsertInParent(BPlusTreePage *old_page, const KeyType &key,
     LOG_INFO("# [bpt InsertInParent] second half, i:%d, j:%d key:%ld", i, j, internal_copy_page->KeyAt(i).ToString());
     new_parent_internal_bpt_page->SetKeyAt(j, internal_copy_page->KeyAt(i));
     new_parent_internal_bpt_page->SetValueAt(j++, internal_copy_page->ValueAt(i));
+    Page *temp_page = buffer_pool_manager_->FetchPage(internal_copy_page->ValueAt(i));
+    auto temp_leaf_page = reinterpret_cast<LeafPage *>(temp_page);
+    temp_leaf_page->SetParentPageId(new_parent_page_id);
+    buffer_pool_manager_->UnpinPage(internal_copy_page->ValueAt(i), true);
     new_parent_internal_bpt_page->IncreaseSize(1);
     i++;
   }
   buffer_pool_manager_->DeletePage(copy_page_id);
-  internal_page->SetParentPageId(new_parent_page_id);
-  new_internal_page->SetParentPageId(new_parent_page_id);
+  // internal_page->SetParentPageId(new_parent_page_id);
+  // new_internal_page->SetParentPageId(new_parent_page_id);
 
   InsertInParent(parent_bpt_page, new_key, new_parent_internal_bpt_page);
+  // InsertInParent(new_parent_internal_bpt_page, new_key, parent_bpt_page);
   buffer_pool_manager_->UnpinPage(parent_bpt_page->GetPageId(), true);
   buffer_pool_manager_->UnpinPage(new_parent_internal_bpt_page->GetPageId(), true);
 }
@@ -298,8 +307,10 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
   if (IsEmpty()) {
+    LOG_INFO("# [bpt Remove] the tree is empty, can't remove");
     return;
   }
+  LOG_INFO("# [bpt Remove]now remove key:%ld", key.ToString());
   page_id_t current_root_id = GetRootPageId();
   Page *page = buffer_pool_manager_->FetchPage(current_root_id);
   BPlusTreePage *bpt_page = reinterpret_cast<BPlusTreePage *>(page->GetData());
@@ -308,33 +319,56 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
 }
 
 INDEX_TEMPLATE_ARGUMENTS
+auto BPLUSTREE_TYPE::FindBrotherPage(BPlusTreePage *page, const page_id_t &page_id, int *key_index, page_id_t *bro_page_id_left,
+                                                     page_id_t *bro_page_id_right) const -> void {
+  
+  auto parent_page = reinterpret_cast<InternalPage *>(page);
+  *bro_page_id_left = INVALID_PAGE_ID;
+  *bro_page_id_right = INVALID_PAGE_ID;
+  for (int i = 0; i < parent_page->GetSize(); i++) {
+    if (parent_page->ValueAt(i) == page_id) {
+      if (i == 0) {
+        *bro_page_id_right = parent_page->ValueAt(1);
+        *key_index = 1;
+        return;
+      }
+      *bro_page_id_left = parent_page->ValueAt(i - 1);
+      *key_index = i;
+      return;
+    }
+  }
+  return;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::RemoveEntry(BPlusTreePage *bpt_page, const KeyType &key) {
-  auto leaf_bpt_page = reinterpret_cast<LeafPage *>(bpt_page);
-  leaf_bpt_page->DeleteKey(key, comparator_);
-  if (leaf_bpt_page->IsRootPage() && leaf_bpt_page->GetSize() == 1) {
-    // as the situation to find bro node in both leaf and internal is the same, I just turn the node to internal node to
-    // avoid judgement on that
-    auto bpt_internal_page = reinterpret_cast<InternalPage *>(leaf_bpt_page);
-    root_page_id_ = bpt_internal_page->ValueAt(0);
-    buffer_pool_manager_->DeletePage(bpt_internal_page->GetPageId());
+  // auto leaf_bpt_page = reinterpret_cast<LeafPage *>(bpt_page);
+  // leaf_bpt_page->DeleteKey(key, comparator_);
+  if (bpt_page->IsRootPage()&& !bpt_page->IsLeafPage() && bpt_page->GetSize() == 2) {
+    auto internal_bpt_page = reinterpret_cast<InternalPage *>(bpt_page);
+    internal_bpt_page->DeleteKey(key, comparator_);
+    root_page_id_ = internal_bpt_page->ValueAt(0);
+    buffer_pool_manager_->DeletePage(internal_bpt_page->GetPageId());
+    Page *page = buffer_pool_manager_->FetchPage(root_page_id_);
+    auto leaf_page = reinterpret_cast<BPlusTreePage *>(page->GetData());
+    leaf_page->SetParentPageId(INVALID_PAGE_ID);
+    buffer_pool_manager_->UnpinPage(root_page_id_, true);
     UpdateRootPageId(0);
-  } else if ((leaf_bpt_page->IsLeafPage() && leaf_bpt_page->GetSize() < (leaf_max_size_ - 1) / 2) ||
-             (!leaf_bpt_page->IsLeafPage() && leaf_bpt_page->GetSize() < internal_max_size_ / 2)) {
+  } else if (!bpt_page->IsLeafPage() && bpt_page->GetSize() < internal_max_size_ / 2) {
     page_id_t bro_page_id_left, bro_page_id_right;
     int parent_key_index;
     auto parent_page = reinterpret_cast<BPlusTreePage *>(
-        (buffer_pool_manager_->FetchPage(leaf_bpt_page->GetParentPageId()))->GetData());
-    // as the situation to find bro node in both leaf and internal is the same, I just turn the node to internal node to
-    // avoid judgement on that
-    auto bpt_internal_page = reinterpret_cast<InternalPage *>(leaf_bpt_page);
-    bpt_internal_page->FindBrotherPage(parent_page, &parent_key_index, &bro_page_id_left, &bro_page_id_right);
+        (buffer_pool_manager_->FetchPage(bpt_page->GetParentPageId()))->GetData());
+    auto bpt_internal_page = reinterpret_cast<InternalPage *>(bpt_page);
+    bpt_internal_page->DeleteKey(key, comparator_);
+    FindBrotherPage(parent_page, bpt_page->GetPageId(), &parent_key_index, &bro_page_id_left, &bro_page_id_right);
 
     if (bro_page_id_left != INVALID_PAGE_ID) {
       auto left_page =
           reinterpret_cast<BPlusTreePage *>((buffer_pool_manager_->FetchPage(bro_page_id_left))->GetData());
       auto parent_internal_page = reinterpret_cast<InternalPage *>(parent_page);
       // auto right_page = reinterpret_cast<BPlusTreePage *>(buffer_pool_manager_->FetchPage(bro_page_id_right));
-      if (left_page->GetSize() + bpt_internal_page->GetSize() < static_cast<int>(GetMaxSize())) {
+      if (left_page->GetSize() + bpt_internal_page->GetSize() < internal_max_size_) {
         CoalesceNodes(bpt_internal_page, left_page, true, parent_internal_page->KeyAt(parent_key_index));
         RemoveEntry(parent_internal_page, parent_internal_page->KeyAt(parent_key_index));
         buffer_pool_manager_->DeletePage(bpt_internal_page->GetPageId());
@@ -347,13 +381,51 @@ void BPLUSTREE_TYPE::RemoveEntry(BPlusTreePage *bpt_page, const KeyType &key) {
       auto right_page =
           reinterpret_cast<BPlusTreePage *>(buffer_pool_manager_->FetchPage(bro_page_id_right)->GetData());
       auto parent_internal_page = reinterpret_cast<InternalPage *>(parent_page);
-      if (right_page->GetSize() + bpt_internal_page->GetSize() < static_cast<int>(GetMaxSize())) {
+      if (right_page->GetSize() + bpt_internal_page->GetSize() < internal_max_size_) {
         CoalesceNodes(bpt_internal_page, right_page, false, parent_internal_page->KeyAt(parent_key_index));
         RemoveEntry(parent_internal_page, parent_internal_page->KeyAt(parent_key_index));
         buffer_pool_manager_->DeletePage(bpt_internal_page->GetPageId());
       } else {
         KeyType first_key =
             Redistribution(bpt_internal_page, right_page, true, parent_internal_page->KeyAt(parent_key_index));
+        parent_internal_page->SetKeyAt(parent_key_index, first_key);
+      }
+    }
+  }else if(bpt_page->IsLeafPage() && bpt_page->GetSize() < (leaf_max_size_ - 1) / 2){
+    page_id_t bro_page_id_left, bro_page_id_right;
+    int parent_key_index;
+    auto parent_page = reinterpret_cast<BPlusTreePage *>(
+        (buffer_pool_manager_->FetchPage(bpt_page->GetParentPageId()))->GetData());
+    auto bpt_leaf_page = reinterpret_cast<LeafPage *>(bpt_page);
+    bpt_leaf_page->DeleteKey(key, comparator_);
+
+    FindBrotherPage(parent_page, bpt_page->GetPageId(), &parent_key_index, &bro_page_id_left, &bro_page_id_right);
+
+    if (bro_page_id_left != INVALID_PAGE_ID) {
+      auto left_page =
+          reinterpret_cast<BPlusTreePage *>((buffer_pool_manager_->FetchPage(bro_page_id_left))->GetData());
+      auto parent_internal_page = reinterpret_cast<LeafPage *>(parent_page);
+     
+      if (left_page->GetSize() + bpt_leaf_page->GetSize() < leaf_max_size_) {
+        CoalesceNodes(bpt_leaf_page, left_page, true, parent_internal_page->KeyAt(parent_key_index));
+        RemoveEntry(parent_internal_page, parent_internal_page->KeyAt(parent_key_index));
+        buffer_pool_manager_->DeletePage(bpt_leaf_page->GetPageId());
+      } else {
+        KeyType end_key =
+            Redistribution(bpt_leaf_page, left_page, false, parent_internal_page->KeyAt(parent_key_index));
+        parent_internal_page->SetKeyAt(parent_key_index, end_key);
+      }
+    } else {
+      auto right_page =
+          reinterpret_cast<BPlusTreePage *>(buffer_pool_manager_->FetchPage(bro_page_id_right)->GetData());
+      auto parent_internal_page = reinterpret_cast<LeafPage *>(parent_page);
+      if (right_page->GetSize() + bpt_leaf_page->GetSize() < leaf_max_size_) {
+        CoalesceNodes(bpt_leaf_page, right_page, false, parent_internal_page->KeyAt(parent_key_index));
+        RemoveEntry(parent_internal_page, parent_internal_page->KeyAt(parent_key_index));
+        buffer_pool_manager_->DeletePage(bpt_leaf_page->GetPageId());
+      } else {
+        KeyType first_key =
+            Redistribution(bpt_leaf_page, right_page, true, parent_internal_page->KeyAt(parent_key_index));
         parent_internal_page->SetKeyAt(parent_key_index, first_key);
       }
     }

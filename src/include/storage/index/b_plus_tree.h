@@ -66,6 +66,8 @@ class BPlusTree {
   // insert in parent node
   auto InsertInParent(BPlusTreePage *old_page, const KeyType &key, BPlusTreePage *new_page) -> void;
 
+  auto FindBrotherPage(BPlusTreePage *page, const page_id_t &page_id, int *key_index, page_id_t *bro_page_id_left,
+                                                     page_id_t *bro_page_id_right) const -> void;
   void RemoveEntry(BPlusTreePage *bpt_page, const KeyType &key);
 
   void CoalesceNodes(BPlusTreePage *bpt_page, BPlusTreePage *bro_page, bool is_predecessor, const KeyType &key);

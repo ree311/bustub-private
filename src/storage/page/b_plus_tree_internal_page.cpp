@@ -52,33 +52,6 @@ INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::EraseAll() -> void { SetSize(0); }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindBrotherPage(BPlusTreePage *page, int *key_index, page_id_t *bro_page_id_left,
-                                                     page_id_t *bro_page_id_right) const -> void {
-  auto parent_page = reinterpret_cast<BPlusTreeInternalPage *>(page);
-  *bro_page_id_left = INVALID_PAGE_ID;
-  *bro_page_id_right = INVALID_PAGE_ID;
-  for (int i = 0; i < parent_page->GetSize(); i++) {
-    if (parent_page->ValueAt(i) == GetPageId()) {
-      if (i == 0) {
-        // if(parent_page->GetSize() == 1){
-        //   return false;
-        // }
-        *bro_page_id_right = parent_page->ValueAt(i + 1);
-        // *key = parent_page->KeyAt(i+1);
-        *key_index = i + 1;
-        return;
-      }
-      *bro_page_id_left = parent_page->ValueAt(i - 1);
-      // *bro_page_id_right = parent_page->ValueAt(i+1);
-      // *key = parent_page->KeyAt(i);
-      *key_index = i;
-      return;
-    }
-  }
-  return;
-}
-
-INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::KVInsert(int index, const KeyType &key, const ValueType &value) -> void {
   array_[index].first = key;
   array_[index].second = value;
@@ -187,7 +160,7 @@ INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::DeleteKey(const KeyType &key, const KeyComparator &cmp) -> void {
   int low = 1, high = GetSize(), mid = 0, i = GetSize();
 
-  while (low <= high) {
+  while (low < high) {
     mid = low + (high - low) / 2;
     if (cmp(array_[mid].first, key) < 0) {
       low = mid + 1;

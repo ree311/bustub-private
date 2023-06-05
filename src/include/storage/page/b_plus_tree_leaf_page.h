@@ -61,6 +61,8 @@ class BPlusTreeLeafPage : public BPlusTreePage {
   auto CopyNFrom(MappingType *item, const int &size) -> void;
   auto DeleteEndValue() -> void;
   auto DeleteFirstValue() -> void;
+  auto FindBrotherPage(BPlusTreePage *page, int *key_index, page_id_t *bro_page_id_left,
+                                                     page_id_t *bro_page_id_right) const -> void;
   auto InsertAtFirst(const KeyType &key, const ValueType &value) -> void;
   auto InsertAtEnd(const KeyType &key, const ValueType &value) -> void;
 
