@@ -65,6 +65,7 @@ class BPlusTreeLeafPage : public BPlusTreePage {
                                                      page_id_t *bro_page_id_right) const -> void;
   auto InsertAtFirst(const KeyType &key, const ValueType &value) -> void;
   auto InsertAtEnd(const KeyType &key, const ValueType &value) -> void;
+  auto GetItem(int index) const -> const MappingType &;
 
  private:
   page_id_t next_page_id_;

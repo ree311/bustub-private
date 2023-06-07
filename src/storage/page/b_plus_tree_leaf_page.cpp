@@ -137,12 +137,17 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::DeleteKey(const KeyType &key, const KeyComparat
       high = mid;
     }
   }
-
+  LOG_INFO("# [bpt DeleteKey] now key:%ld at index:%d deleted", key.ToString(), low);
   for (; low < GetSize(); low++) {
     array_[low] = array_[low + 1];
   }
-
+  
   IncreaseSize(-1);
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::GetItem(int index) const -> const MappingType &{
+  return array_[index];
 }
 
 INDEX_TEMPLATE_ARGUMENTS

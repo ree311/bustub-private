@@ -169,10 +169,11 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::DeleteKey(const KeyType &key, const KeyComp
     }
   }
 
+  LOG_INFO("# [bpt DeleteKey] now key:%ld at index:%d deleted", key.ToString(), low);
   for (; low < i; low++) {
     array_[low] = array_[low + 1];
   }
-
+  
   IncreaseSize(-1);
 }
 
