@@ -82,7 +82,10 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::InsertAtEnd(const KeyType &key, const Value
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::InternalInsert(const KeyType &key, const ValueType &value,
                                                     const KeyComparator &cmp) -> void {
-  int low = 1, high = GetSize(), mid = 0, i = GetSize();
+  int low = 1;
+  int high = GetSize();
+  int mid = 0;
+  int i = GetSize();
 
   while (low < high) {
     mid = low + (high - low) / 2;
@@ -116,8 +119,9 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetValueAt(int index, const ValueType &valu
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindSmallestBiggerKV(const KeyType &key, const KeyComparator &cmp) const -> int {
-  int low = 1, high = GetSize();
-  if(cmp(KeyAt(1), key) > 0){
+  int low = 1;
+  int high = GetSize();
+  if (cmp(KeyAt(1), key) > 0) {
     return 0;
   }
   while (low < high) {
@@ -138,10 +142,7 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::FindSmallestBiggerKV(const KeyType &key, co
 // }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::DeleteEndValue() -> void {
-  IncreaseSize(-1);
-  return;
-}
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::DeleteEndValue() -> void { IncreaseSize(-1); }
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::DeleteFirstValue() -> void {
@@ -153,12 +154,14 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::DeleteFirstValue() -> void {
   }
 
   IncreaseSize(-1);
-  return;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::DeleteKey(const KeyType &key, const KeyComparator &cmp) -> void {
-  int low = 1, high = GetSize(), mid = 0, i = GetSize();
+  int low = 1;
+  int high = GetSize();
+  int mid = 0;
+  int i = GetSize();
 
   while (low < high) {
     mid = low + (high - low) / 2;
@@ -173,7 +176,7 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::DeleteKey(const KeyType &key, const KeyComp
   for (; low < i; low++) {
     array_[low] = array_[low + 1];
   }
-  
+
   IncreaseSize(-1);
 }
 

@@ -105,7 +105,10 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::InsertAtEnd(const KeyType &key, const ValueType
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::LeafInsert(const KeyType &key, const ValueType &value, const KeyComparator &cmp)
     -> void {
-  int low = 0, high = GetSize(), mid = 0, i = GetSize();
+  int low = 0;
+  int high = GetSize();
+  int mid = 0;
+  int i = GetSize();
 
   while (low < high) {
     mid = low + (high - low) / 2;
@@ -127,7 +130,9 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::LeafInsert(const KeyType &key, const ValueType 
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::DeleteKey(const KeyType &key, const KeyComparator &cmp) -> void {
-  int low = 0, high = GetSize(), mid = 0;
+  int low = 0;
+  int high = GetSize();
+  int mid = 0;
 
   while (low < high) {
     mid = low + (high - low) / 2;
@@ -141,18 +146,18 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::DeleteKey(const KeyType &key, const KeyComparat
   for (; low < GetSize(); low++) {
     array_[low] = array_[low + 1];
   }
-  
+
   IncreaseSize(-1);
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_LEAF_PAGE_TYPE::GetItem(int index) const -> const MappingType &{
-  return array_[index];
-}
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::GetItem(int index) const -> const MappingType & { return array_[index]; }
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::FindKey(const KeyType &key, ValueType *value, const KeyComparator &cmp) const -> bool {
-  int low = 0, high = GetSize(), mid = 0;
+  int low = 0;
+  int high = GetSize();
+  int mid = 0;
   while (low < high) {
     mid = low + (high - low) / 2;
     if (cmp(array_[mid].first, key) < 0) {
@@ -162,10 +167,10 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::FindKey(const KeyType &key, ValueType *value, c
     }
   }
   if (cmp(array_[low].first, key) == 0) {
-      LOG_INFO("# [bpt FindKey] find key:%ld at index:%d", key.ToString(), low);
-      *value = array_[low].second;
-      return true;
-  }  
+    LOG_INFO("# [bpt FindKey] find key:%ld at index:%d", key.ToString(), low);
+    *value = array_[low].second;
+    return true;
+  }
   LOG_INFO("# [bpt FindKey] can't find key:%ld", key.ToString());
   return false;
 }
@@ -174,10 +179,7 @@ INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::EraseAll() -> void { SetSize(0); }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_LEAF_PAGE_TYPE::DeleteEndValue() -> void {
-  IncreaseSize(-1);
-  return;
-}
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::DeleteEndValue() -> void { IncreaseSize(-1); }
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::DeleteFirstValue() -> void {
@@ -188,7 +190,6 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::DeleteFirstValue() -> void {
   }
 
   IncreaseSize(-1);
-  return;
 }
 
 template class BPlusTreeLeafPage<GenericKey<4>, RID, GenericComparator<4>>;

@@ -32,18 +32,12 @@ class IndexIterator {
 
   auto operator++() -> IndexIterator &;
 
-  auto operator==(const IndexIterator &itr) const -> bool { 
-    if(leaf_page_id_ == itr.leaf_page_id_ && index_ == itr.index_)  {
-      return true;
-    }
-    return false;
+  auto operator==(const IndexIterator &itr) const -> bool {
+    return leaf_page_id_ == itr.leaf_page_id_ && index_ == itr.index_;
   }
 
-  auto operator!=(const IndexIterator &itr) const -> bool { 
-    if(leaf_page_id_ != itr.leaf_page_id_ || index_ != itr.index_)  {
-      return true;
-    }
-    return false;
+  auto operator!=(const IndexIterator &itr) const -> bool {
+    return leaf_page_id_ != itr.leaf_page_id_ || index_ != itr.index_;
   }
 
  private:
