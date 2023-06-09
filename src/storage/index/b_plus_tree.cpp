@@ -15,7 +15,9 @@ BPLUSTREE_TYPE::BPlusTree(std::string name, BufferPoolManager *buffer_pool_manag
       buffer_pool_manager_(buffer_pool_manager),
       comparator_(comparator),
       leaf_max_size_(leaf_max_size),
-      internal_max_size_(internal_max_size) {}
+      internal_max_size_(internal_max_size) {
+  LOG_INFO("# [bpt INIT]leaf max size:%d, internal max size:%d", leaf_max_size, internal_max_size);
+}
 
 /*
  * Helper function to decide whether current b+tree is empty
@@ -82,6 +84,7 @@ auto BPLUSTREE_TYPE::InsertInParent(BPlusTreePage *old_page, const KeyType &key,
     return;
   }
   page_id_t parent_page_id = internal_page->GetParentPageId();
+  buffer_pool_manager_->UnpinPage(old_page->GetPageId(), true);
 
   Page *parent_page = buffer_pool_manager_->FetchPage(parent_page_id);
   BUSTUB_ENSURE(parent_page != nullptr, "FetchPage parent_page nullptr!");
@@ -91,7 +94,6 @@ auto BPLUSTREE_TYPE::InsertInParent(BPlusTreePage *old_page, const KeyType &key,
     LOG_INFO("# [bpt InsertInParent]parent node is not full, do insert");
     parent_bpt_page->InternalInsert(key, new_page->GetPageId(), comparator_);
     new_page->SetParentPageId(parent_page_id);
-    buffer_pool_manager_->UnpinPage(old_page->GetPageId(), true);
     buffer_pool_manager_->UnpinPage(new_page->GetPageId(), true);
     buffer_pool_manager_->UnpinPage(parent_page_id, true);
     return;
@@ -111,7 +113,6 @@ auto BPLUSTREE_TYPE::InsertInParent(BPlusTreePage *old_page, const KeyType &key,
 
   internal_copy_page->InternalInsert(key, new_page->GetPageId(), comparator_);
   parent_bpt_page->EraseAll();
-  buffer_pool_manager_->UnpinPage(old_page->GetPageId(), true);
   buffer_pool_manager_->UnpinPage(new_page->GetPageId(), true);
 
   page_id_t new_parent_page_id;
@@ -146,13 +147,10 @@ auto BPLUSTREE_TYPE::InsertInParent(BPlusTreePage *old_page, const KeyType &key,
     i++;
   }
   buffer_pool_manager_->DeletePage(copy_page_id);
-  // internal_page->SetParentPageId(new_parent_page_id);
-  // new_internal_page->SetParentPageId(new_parent_page_id);
 
   InsertInParent(parent_bpt_page, new_key, new_parent_internal_bpt_page);
-  // InsertInParent(new_parent_internal_bpt_page, new_key, parent_bpt_page);
-  // buffer_pool_manager_->UnpinPage(parent_bpt_page->GetPageId(), true);
-  // buffer_pool_manager_->UnpinPage(new_parent_internal_bpt_page->GetPageId(), true);
+  // buffer_pool_manager_->UnpinPage(parent_page_id, true);
+  // buffer_pool_manager_->UnpinPage(new_parent_page_id, true);
 }
 
 INDEX_TEMPLATE_ARGUMENTS
@@ -240,6 +238,7 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
 
   // check if there is a redundant key
   if (CheckRedundant(leaf_page, key, comparator_)) {
+    buffer_pool_manager_->UnpinPage(leaf_page->GetPageId(), false);
     return false;
   }
 
@@ -247,68 +246,54 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
     // InsertInLeaf(bpt_page, key, value);
     LOG_INFO("# [bpt Insert]leaf node is not full, do insert");
     leaf_page->LeafInsert(key, value, comparator_);
-  } else {
-    LOG_INFO("# [bpt Insert]leaf node is full, now split");
-    page_id_t new_parent_page_id;
-    Page *new_parent_page = buffer_pool_manager_->NewPage(&new_parent_page_id);
-    auto new_leaf_page = reinterpret_cast<LeafPage *>(new_parent_page->GetData());
-    new_leaf_page->Init(new_parent_page_id, leaf_page->GetParentPageId(), leaf_max_size_);
-
-    page_id_t new_page_id;
-    Page *new_page = buffer_pool_manager_->NewPage(&new_page_id);
-    auto temp_leaf_page = reinterpret_cast<LeafPage *>(new_page->GetData());
-    temp_leaf_page->Init(new_page_id, leaf_page->GetParentPageId(), leaf_max_size_);
-    // MappingType copy_array[leaf_page->GetSize()+1];
-    // // copy all array elements to a new array
-    // leaf_page->CopyTo(copy_array);
-
-    // leaf_page->CopyNTo(temp_leaf_page, 0);
-    // if(leaf_page->IsRootPage()){
-    //   LOG_INFO("# [bpt Insert] l is root, copy to 1 index");
-    //   for (int i = 0; i < leaf_page->GetSize(); i++) {
-    //     LOG_INFO("# [bpt Insert] now got key:%ld", leaf_page->KeyAt(i).ToString());
-    //     temp_leaf_page->SetKeyAt(i+1, leaf_page->KeyAt(i));
-    //     temp_leaf_page->SetValueAt(i+1, leaf_page->ValueAt(i));
-    //     temp_leaf_page->IncreaseSize(1);
-    //   }
-    // }else{
-    // LOG_INFO("# [bpt Insert] l is not root, copy to 0 index");
-    for (int i = 0; i < leaf_page->GetSize(); i++) {
-      // LOG_INFO("# [bpt Insert] now got key:%ld", leaf_page->KeyAt(i).ToString());
-      temp_leaf_page->SetKeyAt(i, leaf_page->KeyAt(i));
-      temp_leaf_page->SetValueAt(i, leaf_page->ValueAt(i));
-      temp_leaf_page->IncreaseSize(1);
-    }
-    // }
-
-    // InsertInLeaf(leaf_page, key, value);
-    temp_leaf_page->LeafInsert(key, value, comparator_);
-
-    new_leaf_page->SetNextPageId(leaf_page->GetNextPageId());
-    leaf_page->SetNextPageId(new_leaf_page->GetPageId());
-    leaf_page->EraseAll();
-
-    LOG_INFO("# [bpt Insert]now move kvs");
-    // move half
-    int i = 0;
-    for (; i < temp_leaf_page->GetSize() / 2; i++) {
-      // todo::use setkeyat and setvalueat
-      LOG_INFO("# [bpt Insert] first half, i:%d, key:%ld", i, temp_leaf_page->KeyAt(i).ToString());
-      leaf_page->KVInsert(i, temp_leaf_page->KeyAt(i), temp_leaf_page->ValueAt(i));
-    }
-    // temp_leaf_page->CopyNTo(leaf_page, temp_n/2);
-    // temp_leaf_page->CopyNTo(new_leaf_page, )
-    int j = 0;
-    for (; i < temp_leaf_page->GetSize(); i++) {
-      // todo::use setkeyat and setvalueat
-      LOG_INFO("# [bpt Insert] second half, i:%d, j:%d key:%ld", i, j, temp_leaf_page->KeyAt(i).ToString());
-      new_leaf_page->KVInsert(j++, temp_leaf_page->KeyAt(i), temp_leaf_page->ValueAt(i));
-    }
-    buffer_pool_manager_->DeletePage(new_page_id);
-    LOG_INFO("# [bpt Insert] new l, key:%ld, parent_page_id:%d", new_leaf_page->KeyAt(0).ToString(),
-             new_leaf_page->GetParentPageId());
-    InsertInParent(leaf_page, new_leaf_page->KeyAt(0), new_leaf_page);
+    buffer_pool_manager_->UnpinPage(leaf_page->GetPageId(), true);
+    return true;
   }
+
+  LOG_INFO("# [bpt Insert]leaf node is full, now split");
+  page_id_t new_parent_page_id;
+  Page *new_parent_page = buffer_pool_manager_->NewPage(&new_parent_page_id);
+  auto new_leaf_page = reinterpret_cast<LeafPage *>(new_parent_page->GetData());
+  new_leaf_page->Init(new_parent_page_id, leaf_page->GetParentPageId(), leaf_max_size_);
+
+  page_id_t new_page_id;
+  Page *new_page = buffer_pool_manager_->NewPage(&new_page_id);
+  auto temp_leaf_page = reinterpret_cast<LeafPage *>(new_page->GetData());
+  temp_leaf_page->Init(new_page_id, leaf_page->GetParentPageId(), leaf_max_size_);
+
+  for (int i = 0; i < leaf_page->GetSize(); i++) {
+    // LOG_INFO("# [bpt Insert] now got key:%ld", leaf_page->KeyAt(i).ToString());
+    temp_leaf_page->SetKeyAt(i, leaf_page->KeyAt(i));
+    temp_leaf_page->SetValueAt(i, leaf_page->ValueAt(i));
+    temp_leaf_page->IncreaseSize(1);
+  }
+
+  // InsertInLeaf(leaf_page, key, value);
+  temp_leaf_page->LeafInsert(key, value, comparator_);
+
+  new_leaf_page->SetNextPageId(leaf_page->GetNextPageId());
+  leaf_page->SetNextPageId(new_leaf_page->GetPageId());
+  leaf_page->EraseAll();
+
+  LOG_INFO("# [bpt Insert]now move kvs");
+  // move half
+  int i = 0;
+  for (; i < temp_leaf_page->GetSize() / 2; i++) {
+    LOG_INFO("# [bpt Insert] first half, i:%d, key:%ld", i, temp_leaf_page->KeyAt(i).ToString());
+    leaf_page->KVInsert(i, temp_leaf_page->KeyAt(i), temp_leaf_page->ValueAt(i));
+  }
+  // temp_leaf_page->CopyNTo(leaf_page, temp_n/2);
+  // temp_leaf_page->CopyNTo(new_leaf_page, )
+  int j = 0;
+  for (; i < temp_leaf_page->GetSize(); i++) {
+    LOG_INFO("# [bpt Insert] second half, i:%d, j:%d key:%ld", i, j, temp_leaf_page->KeyAt(i).ToString());
+    new_leaf_page->KVInsert(j++, temp_leaf_page->KeyAt(i), temp_leaf_page->ValueAt(i));
+  }
+  buffer_pool_manager_->DeletePage(new_page_id);
+  LOG_INFO("# [bpt Insert] new l, key:%ld, parent_page_id:%d", new_leaf_page->KeyAt(0).ToString(),
+           new_leaf_page->GetParentPageId());
+  InsertInParent(leaf_page, new_leaf_page->KeyAt(0), new_leaf_page);
+
   return true;
 }
 
@@ -369,6 +354,7 @@ void BPLUSTREE_TYPE::RemoveEntry(BPlusTreePage *bpt_page, const KeyType &key) {
     if (bpt_page->IsLeafPage()) {
       auto leaf_bpt_page = reinterpret_cast<LeafPage *>(bpt_page);
       leaf_bpt_page->DeleteKey(key, comparator_);
+      buffer_pool_manager_->UnpinPage(root_page_id_, true);
     } else if (bpt_page->GetSize() == 2) {
       LOG_INFO("# [bpt RemoveEntry] node is root & has only one child after delete");
       auto internal_bpt_page = reinterpret_cast<InternalPage *>(bpt_page);
@@ -407,7 +393,6 @@ void BPLUSTREE_TYPE::RemoveEntry(BPlusTreePage *bpt_page, const KeyType &key) {
       if (left_page->GetSize() + bpt_internal_page->GetSize() < internal_max_size_) {
         CoalesceNodes(bpt_internal_page, left_page, true, parent_internal_page->KeyAt(parent_key_index));
         RemoveEntry(parent_internal_page, parent_internal_page->KeyAt(parent_key_index));
-        buffer_pool_manager_->UnpinPage(bpt_page->GetParentPageId(), true);
         buffer_pool_manager_->DeletePage(bpt_internal_page->GetPageId());
       } else {
         KeyType end_key =
@@ -415,6 +400,7 @@ void BPLUSTREE_TYPE::RemoveEntry(BPlusTreePage *bpt_page, const KeyType &key) {
         parent_internal_page->SetKeyAt(parent_key_index, end_key);
         buffer_pool_manager_->UnpinPage(bpt_page->GetPageId(), true);
       }
+      buffer_pool_manager_->UnpinPage(bpt_page->GetParentPageId(), true);
       buffer_pool_manager_->UnpinPage(bro_page_id_left, true);
     } else {
       Page *right = buffer_pool_manager_->FetchPage(bro_page_id_right);
@@ -424,13 +410,13 @@ void BPLUSTREE_TYPE::RemoveEntry(BPlusTreePage *bpt_page, const KeyType &key) {
       if (right_page->GetSize() + bpt_internal_page->GetSize() < internal_max_size_) {
         CoalesceNodes(bpt_internal_page, right_page, false, parent_internal_page->KeyAt(parent_key_index));
         RemoveEntry(parent_internal_page, parent_internal_page->KeyAt(parent_key_index));
-        buffer_pool_manager_->UnpinPage(bpt_page->GetParentPageId(), true);
         buffer_pool_manager_->DeletePage(bpt_internal_page->GetPageId());
       } else {
         KeyType first_key =
             Redistribution(bpt_internal_page, right_page, true, parent_internal_page->KeyAt(parent_key_index));
         parent_internal_page->SetKeyAt(parent_key_index, first_key);
       }
+      buffer_pool_manager_->UnpinPage(bpt_page->GetParentPageId(), true);
       buffer_pool_manager_->UnpinPage(bro_page_id_right, true);
       buffer_pool_manager_->UnpinPage(bpt_page->GetPageId(), true);
     }
@@ -458,15 +444,14 @@ void BPLUSTREE_TYPE::RemoveEntry(BPlusTreePage *bpt_page, const KeyType &key) {
       if (left_page->GetSize() + bpt_leaf_page->GetSize() < leaf_max_size_) {
         CoalesceNodes(bpt_leaf_page, left_page, true, parent_internal_page->KeyAt(parent_key_index));
         RemoveEntry(parent_internal_page, parent_internal_page->KeyAt(parent_key_index));
-        // buffer_pool_manager_->UnpinPage(bpt_page->GetParentPageId(), true);
         buffer_pool_manager_->DeletePage(bpt_leaf_page->GetPageId());
       } else {
         KeyType end_key =
             Redistribution(bpt_leaf_page, left_page, false, parent_internal_page->KeyAt(parent_key_index));
         parent_internal_page->SetKeyAt(parent_key_index, end_key);
         buffer_pool_manager_->UnpinPage(bpt_page->GetPageId(), true);
-        buffer_pool_manager_->UnpinPage(bpt_page->GetParentPageId(), true);
       }
+      buffer_pool_manager_->UnpinPage(bpt_page->GetParentPageId(), true);
       buffer_pool_manager_->UnpinPage(bro_page_id_left, true);
     } else {
       Page *right = buffer_pool_manager_->FetchPage(bro_page_id_right);
@@ -476,15 +461,14 @@ void BPLUSTREE_TYPE::RemoveEntry(BPlusTreePage *bpt_page, const KeyType &key) {
       if (right_page->GetSize() + bpt_leaf_page->GetSize() < leaf_max_size_) {
         CoalesceNodes(bpt_leaf_page, right_page, false, parent_internal_page->KeyAt(parent_key_index));
         RemoveEntry(parent_internal_page, parent_internal_page->KeyAt(parent_key_index));
-        buffer_pool_manager_->UnpinPage(bpt_page->GetParentPageId(), true);
         buffer_pool_manager_->DeletePage(bpt_leaf_page->GetPageId());
       } else {
         KeyType first_key =
             Redistribution(bpt_leaf_page, right_page, true, parent_internal_page->KeyAt(parent_key_index));
         parent_internal_page->SetKeyAt(parent_key_index, first_key);
         buffer_pool_manager_->UnpinPage(bpt_page->GetPageId(), true);
-        buffer_pool_manager_->UnpinPage(bpt_page->GetParentPageId(), true);
       }
+      buffer_pool_manager_->UnpinPage(bpt_page->GetParentPageId(), true);
       buffer_pool_manager_->UnpinPage(bro_page_id_right, true);
     }
     return;
