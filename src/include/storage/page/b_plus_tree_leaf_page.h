@@ -57,8 +57,8 @@ class BPlusTreeLeafPage : public BPlusTreePage {
   auto FindKey(const KeyType &key, ValueType *value, const KeyComparator &cmp) const -> bool;
   auto KVInsert(int index, const KeyType &key, const ValueType &value) -> void;
   auto DeleteKey(const KeyType &key, const KeyComparator &cmp) -> void;
-  auto CopyNTo(BPlusTreeLeafPage *leaf_page, const int &pos) -> void;
-  auto CopyNFrom(MappingType *item, const int &size) -> void;
+  auto CopyHalfTo(BPlusTreeLeafPage *leaf_page) -> void;
+  auto CopyHalfFrom(MappingType *item, const int &size) -> void;
   auto DeleteEndValue() -> void;
   auto DeleteFirstValue() -> void;
   auto FindBrotherPage(BPlusTreePage *page, int *key_index, page_id_t *bro_page_id_left,

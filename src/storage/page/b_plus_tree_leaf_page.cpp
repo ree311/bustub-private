@@ -64,13 +64,14 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::SetKeyAt(int index, const KeyType &key) -> void
 
 // leaf_page is the direct page, pos is the start pos to copy
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_LEAF_PAGE_TYPE::CopyNTo(BPlusTreeLeafPage *leaf_page, const int &pos) -> void {
-  leaf_page->CopyNFrom(array_ + pos, GetSize() - pos);
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::CopyHalfTo(BPlusTreeLeafPage *leaf_page) -> void {
+  leaf_page->CopyHalfFrom(array_ + GetSize() / 2, GetSize() - GetSize() / 2);
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_LEAF_PAGE_TYPE::CopyNFrom(MappingType *item, const int &size) -> void {
-  std::copy(item, item + size + 1, array_ + GetSize());
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::CopyHalfFrom(MappingType *item, const int &size) -> void {
+  std::copy(item, item + size + 1, array_);
+  SetSize(size);
 }
 
 INDEX_TEMPLATE_ARGUMENTS

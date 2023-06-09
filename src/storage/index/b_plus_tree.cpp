@@ -256,40 +256,43 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
   auto new_leaf_page = reinterpret_cast<LeafPage *>(new_parent_page->GetData());
   new_leaf_page->Init(new_parent_page_id, leaf_page->GetParentPageId(), leaf_max_size_);
 
-  page_id_t new_page_id;
-  Page *new_page = buffer_pool_manager_->NewPage(&new_page_id);
-  auto temp_leaf_page = reinterpret_cast<LeafPage *>(new_page->GetData());
-  temp_leaf_page->Init(new_page_id, leaf_page->GetParentPageId(), leaf_max_size_);
-
-  for (int i = 0; i < leaf_page->GetSize(); i++) {
-    // LOG_INFO("# [bpt Insert] now got key:%ld", leaf_page->KeyAt(i).ToString());
-    temp_leaf_page->SetKeyAt(i, leaf_page->KeyAt(i));
-    temp_leaf_page->SetValueAt(i, leaf_page->ValueAt(i));
-    temp_leaf_page->IncreaseSize(1);
-  }
-
-  // InsertInLeaf(leaf_page, key, value);
-  temp_leaf_page->LeafInsert(key, value, comparator_);
-
+  // page_id_t new_page_id;
+  // Page *new_page = buffer_pool_manager_->NewPage(&new_page_id);
+  // auto temp_leaf_page = reinterpret_cast<LeafPage *>(new_page->GetData());
+  // temp_leaf_page->Init(new_page_id, leaf_page->GetParentPageId(), leaf_max_size_);
   new_leaf_page->SetNextPageId(leaf_page->GetNextPageId());
   leaf_page->SetNextPageId(new_leaf_page->GetPageId());
-  leaf_page->EraseAll();
 
-  LOG_INFO("# [bpt Insert]now move kvs");
-  // move half
-  int i = 0;
-  for (; i < temp_leaf_page->GetSize() / 2; i++) {
-    LOG_INFO("# [bpt Insert] first half, i:%d, key:%ld", i, temp_leaf_page->KeyAt(i).ToString());
-    leaf_page->KVInsert(i, temp_leaf_page->KeyAt(i), temp_leaf_page->ValueAt(i));
-  }
-  // temp_leaf_page->CopyNTo(leaf_page, temp_n/2);
-  // temp_leaf_page->CopyNTo(new_leaf_page, )
-  int j = 0;
-  for (; i < temp_leaf_page->GetSize(); i++) {
-    LOG_INFO("# [bpt Insert] second half, i:%d, j:%d key:%ld", i, j, temp_leaf_page->KeyAt(i).ToString());
-    new_leaf_page->KVInsert(j++, temp_leaf_page->KeyAt(i), temp_leaf_page->ValueAt(i));
-  }
-  buffer_pool_manager_->DeletePage(new_page_id);
+  leaf_page->LeafInsert(key, value, comparator_);
+  leaf_page->CopyHalfTo(new_leaf_page);
+  leaf_page->SetSize(leaf_page->GetSize() / 2);
+
+  // for (int i = 0; i < leaf_page->GetSize(); i++) {
+  //   // LOG_INFO("# [bpt Insert] now got key:%ld", leaf_page->KeyAt(i).ToString());
+  //   temp_leaf_page->SetKeyAt(i, leaf_page->KeyAt(i));
+  //   temp_leaf_page->SetValueAt(i, leaf_page->ValueAt(i));
+  //   temp_leaf_page->IncreaseSize(1);
+  // }
+
+  // temp_leaf_page->LeafInsert(key, value, comparator_);
+
+  // leaf_page->EraseAll();
+
+  // LOG_INFO("# [bpt Insert]now move kvs");
+  // // move half
+  // int i = 0;
+  // for (; i < temp_leaf_page->GetSize() / 2; i++) {
+  //   LOG_INFO("# [bpt Insert] first half, i:%d, key:%ld", i, temp_leaf_page->KeyAt(i).ToString());
+  //   leaf_page->KVInsert(i, temp_leaf_page->KeyAt(i), temp_leaf_page->ValueAt(i));
+  // }
+  // // temp_leaf_page->CopyNTo(leaf_page, temp_n/2);
+  // // temp_leaf_page->CopyNTo(new_leaf_page, )
+  // int j = 0;
+  // for (; i < temp_leaf_page->GetSize(); i++) {
+  //   LOG_INFO("# [bpt Insert] second half, i:%d, j:%d key:%ld", i, j, temp_leaf_page->KeyAt(i).ToString());
+  //   new_leaf_page->KVInsert(j++, temp_leaf_page->KeyAt(i), temp_leaf_page->ValueAt(i));
+  // }
+  // buffer_pool_manager_->DeletePage(new_page_id);
   LOG_INFO("# [bpt Insert] new l, key:%ld, parent_page_id:%d", new_leaf_page->KeyAt(0).ToString(),
            new_leaf_page->GetParentPageId());
   InsertInParent(leaf_page, new_leaf_page->KeyAt(0), new_leaf_page);
